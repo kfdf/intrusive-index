@@ -1,4 +1,4 @@
-export default function () {
+export default function indexFactory() {
   const UNCHANGED = 0
   const UPDATED = 1
   const RESIZED = 2
@@ -6,23 +6,26 @@ export default function () {
   const l = Symbol('left')
   const r = Symbol('right')
   const d = Symbol('diff')
-  function copyProps(source, target) {
-    target[l] = source[l]
-    target[r] = source[r]
-    target[d] = source[d]
-    return target
-  }  
+ 
 
-  function addRight(curr, node, comparer) {
+  function addRight(curr, node, comparer, replace) {
     let right = curr[r]
     if (right == null) {
       curr[r] = node
+      detachedNode = null
       return (++curr[d] & 3) == 2 ? RESIZED : UPDATED
     } 
     let cmp = comparer(right, node)
-    let result = 
-      cmp < 0 ? addRight(right, node, comparer) :
-      cmp > 0 ? addLeft(right, node, comparer) : UNCHANGED
+    let result = UNCHANGED
+    if (cmp < 0) {
+      result = addRight(right, node, comparer, replace)
+    } else if (cmp > 0) {
+      result = addLeft(right, node, comparer, replace)
+    } else if (replace) {
+      curr[r] = detachNode(right, node)
+    } else {
+      detachedNode = null
+    }
     if (result < RESIZED) return result
     if (result == UNBALANCED) {
       curr[r] = right = rotate(right)
@@ -32,17 +35,25 @@ export default function () {
     return (++curr[d] & 3) == 2 ? RESIZED : UPDATED
   }  
  
-  function addLeft(curr, node, comparer) {
+  function addLeft(curr, node, comparer, replace) {
     let left = curr[l]
     if (left == null) {
       curr[l] = node
       curr[d] += 4
+      detachedNode = null
       return (--curr[d] & 3) == 0 ? RESIZED : UPDATED
     }    
     let cmp = comparer(left, node)
-    let result = 
-      cmp < 0 ? addRight(left, node, comparer) : 
-      cmp > 0 ? addLeft(left, node, comparer) : UNCHANGED
+    let result = UNCHANGED
+    if (cmp < 0) {
+      result = addRight(left, node, comparer, replace)
+    } else if (cmp > 0) {
+      result = addLeft(left, node, comparer, replace)
+    } else if (replace) {
+      curr[l] = detachNode(left, node)
+    } else {
+      detachedNode = null
+    }
     if (result == UNCHANGED) return UNCHANGED
     curr[d] += 4
     if (result == UPDATED) return UPDATED
@@ -53,13 +64,31 @@ export default function () {
     if ((curr[d] & 3) == 0) return UNBALANCED
     return (--curr[d] & 3) == 0 ? RESIZED : UPDATED
   }  
-  let deletedNode = null  
+  let detachedNode = null  
+  function detachNode(target, repl) {
+    detachedNode = target
+    repl[l] = target[l]
+    repl[r] = target[r]
+    repl[d] = target[d]
+    return repl
+  }
+  function getDetached() {
+    let ret = detachedNode
+    if (!ret) return ret
+    ret[l] = null
+    ret[r] = null
+    ret[d] = 1
+    detachedNode = null
+    return ret
+  }
   /** 
   @returns {0|1|2|3} */
   function deleteLeft(curr, value, comparer) {
     let left = curr[l]
-    if (left == null) return UNCHANGED
-
+    if (left == null) {
+      detachedNode = null
+      return UNCHANGED
+    }
     let cmp = comparer(left, value)
     /** @type {0|1|2|3} */
     let result
@@ -70,10 +99,9 @@ export default function () {
     } else if (left[l] && left[r]) {
       let size = left[d] >>> 2
       result = deleteLeftAt(left, size - 1)
-      curr[l] = left = copyProps(left, deletedNode)
-      deletedNode = null
+      curr[l] = left = detachNode(left, detachedNode)
     } else {
-      deletedNode = left
+      detachedNode = left
       curr[l] = left = left[l] || left[r]
       result = RESIZED
     }
@@ -95,10 +123,9 @@ export default function () {
       result = deleteRightAt(left, index - size - 1)
     } else if (left[l] && left[r]) {
       result = deleteLeftAt(left, size - 1)
-      curr[l] = left = copyProps(left, deletedNode)
-      deletedNode = null
+      curr[l] = left = detachNode(left, detachedNode)
     } else {
-      deletedNode = left
+      detachedNode = left
       curr[l] = left = left[l] || left[r]
       result = RESIZED
     }
@@ -130,10 +157,9 @@ export default function () {
       result = deleteRightAt(right, index - size - 1)
     } else if (right[l] && right[r]) {
       result = deleteLeftAt(right, size - 1)
-      curr[r] = right = copyProps(right, deletedNode)
-      deletedNode = null
+      curr[r] = right = detachNode(right, detachedNode)
     } else {
-      deletedNode = right
+      detachedNode = right
       curr[r] = right = right[l] || right[r]
       result = RESIZED
     }
@@ -153,10 +179,9 @@ export default function () {
       result = deleteRightAt(right, index - size - 1)
     } else if (right[l] && right[r]) {
       result = deleteLeftAt(right, size - 1)
-      curr[r] = right = copyProps(right, deletedNode)
-      deletedNode = null
+      curr[r] = right = detachNode(right, detachedNode)
     } else {
-      deletedNode = right
+      detachedNode = right
       curr[r] = right = right[l] || right[r]
       result = RESIZED
     }
@@ -167,8 +192,10 @@ export default function () {
   @returns {0|1|2|3} */
   function deleteRight(curr, value, comparer) {
     let right = curr[r]
-    if (right == null) return UNCHANGED
-
+    if (right == null) {
+      detachedNode = null
+      return UNCHANGED  
+    }
     let cmp = comparer(right, value)
     /** @type {0|1|2|3} */
     let result
@@ -179,10 +206,9 @@ export default function () {
     } else if (right[l] && right[r]) {
       let size = right[d] >>> 2
       result = deleteLeftAt(right, size - 1)
-      curr[r] = right = copyProps(right, deletedNode)
-      deletedNode = null
+      curr[r] = right = detachNode(right, detachedNode)
     } else {
-      deletedNode = right
+      detachedNode = right
       curr[r] = right = right[l] || right[r]
       result = RESIZED
     }
@@ -215,17 +241,18 @@ export default function () {
   //         |1|                      
       let right = node[r]
       let diff = right[d] & 3
+      let nodeSize = node[d] & ~3
       if (diff >= 1) {
         if (diff == 2) {
-          node[d] = node[d] & ~3 | 1
+          node[d] = nodeSize | 1
           right[d] = right[d] & ~3 | 1
         } else {
-          node[d] = node[d] & ~3 | 2
+          node[d] = nodeSize | 2
           right[d] = right[d] & ~3
         }
         node[r] = right[l]
         right[l] = node
-        right[d] += (node[d] & ~3) + 4
+        right[d] += nodeSize + 4
         return right
       } else {
   //    2+                    1       
@@ -235,13 +262,13 @@ export default function () {
         let left = right[l]
         let diff = left[d] & 3
         if (diff == 2) {
-          node[d] = node[d] & ~3
+          node[d] = nodeSize
           right[d] = right[d] & ~3 | 1
         } else if (diff == 0) {
-          node[d] = node[d] & ~3 | 1
+          node[d] = nodeSize | 1
           right[d] = right[d] & ~3 | 2
         } else {
-          node[d] = node[d] & ~3 | 1
+          node[d] = nodeSize | 1
           right[d] = right[d] & ~3 | 1
         }
         left[d] = left[d] & ~3 | 1
@@ -250,7 +277,7 @@ export default function () {
         left[l] = node
         left[r] = right
         right[d] -= (left[d] & ~3) + 4
-        left[d] += (node[d] & ~3) + 4
+        left[d] += nodeSize + 4
         return left
       }
     } else {
@@ -264,18 +291,19 @@ export default function () {
   // |x| |x|           |1| |x| |x|    
   // |1|                              
       let left = node[l]
+      let leftSize = left[d] & ~3
       let diff = left[d] & 3
       if (diff <= 1) {
         if (diff == 0) {
-          left[d] = left[d] & ~3 | 1
+          left[d] = leftSize | 1
           node[d] = node[d] & ~3 | 1
         } else {
-          left[d] = left[d] & ~3 | 2
+          left[d] = leftSize | 2
           node[d] = node[d] & ~3
         }
         node[l] = left[r]
         left[r] = node
-        node[d] -= (left[d] & ~3) + 4
+        node[d] -= leftSize + 4
         return left
       } else {
   //               0-             1       
@@ -286,20 +314,20 @@ export default function () {
         let diff = right[d] & 3
         if (diff == 2) {
           node[d] = node[d] & ~3 | 1
-          left[d] = left[d] & ~3
+          left[d] = leftSize
         } else if (diff == 0) {
           node[d] = node[d] & ~3 | 2
-          left[d] = left[d] & ~3 | 1
+          left[d] = leftSize | 1
         } else {
           node[d] = node[d] & ~3 | 1
-          left[d] = left[d] & ~3 | 1
+          left[d] = leftSize | 1
         }
         right[d] = right[d] & ~3 | 1
         left[r] = right[l]
         node[l] = right[r]
         right[l] = left
         right[r] = node
-        right[d] += (left[d] & ~3) + 4
+        right[d] += leftSize + 4
         node[d] -= (right[d] & ~3) + 4
         return right
       }
@@ -320,7 +348,6 @@ export default function () {
       }
     }
   }  
-
 
   /** 
   @param {number} start
@@ -507,40 +534,55 @@ export default function () {
       return this.root[d] >>> 2
     }
     clear() {
-      this.root = { [l]: null, [r]: null, [d]: 1 }
+      let { root } = this
+      root[l] = null
+      root[r] = null
+      root[d] = 1
     }
     /**
-    @param {T} value */
-    add(value) {
+    @param {T} value 
+    @param {boolean} replace 
+    @returns {T | null} */
+    add(value, replace = false) {
       let { root, comparer } = this
       value[l] = null
       value[r] = null
       value[d] = 1
-      return !!addLeft(root, value, comparer)
-    }
-    /**
-    @param {T} value */
-    delete(value) {
-      let { root, comparer } = this
-      return !!deleteLeft(root, value, comparer)
-    }
-    /**
-    @param {number} value */    
-    deleteAt(index) {
-      let { root, size } = this
-      if (index >= 0 && index < size) {
-        return !!deleteLeftAt(root, index)
-      } 
-      return false
-    }
-    /**
-    @param {T} value */    
-    has(value) {
-      return !!this.getValue(value)
+      return !!addLeft(root, value, comparer, false)
     }
     /**
     @param {T} value 
-    @returns {T} */     
+    @param {boolean} replace 
+    @returns {T | null} */
+    insert(value) {
+      let { root, comparer } = this
+      value[l] = null
+      value[r] = null
+      value[d] = 1
+      addLeft(root, value, comparer, true)
+      return getDetached()
+    }
+
+    /**
+    @param {T} value
+    @returns {T | null} */
+    delete(value) {
+      let { root, comparer } = this
+      deleteLeft(root, value, comparer)
+      return getDetached()
+    }
+    /**
+    @param {number} value 
+    @returns {T | null} */    
+    deleteAt(index) {
+      let { root, size } = this
+      if (index < 0 || index >= size) return null
+      deleteLeftAt(root, index)
+      return getDetached()
+    }
+    /**
+    @param {T} value 
+    @returns {T | null} */     
     get(value) {
       let { root, comparer } = this
       let node = root[l]
@@ -554,15 +596,16 @@ export default function () {
     }
     /**
     @param {number} index
-    @returns {T} */    
+    @returns {T | null} */    
     getAt(index) {
       let { root, size } = this
       if (index >= 0 && index < size) {
         return getAt(root[l], index)
       }
+      return null
     }
     /**
-    @param {(v: T) => number} comparer */     
+    @param {(entry: T) => number} comparer */     
     findRange(comparer) {
       let { root } = this
       let node = root[l]
@@ -596,7 +639,7 @@ export default function () {
     } 
 
     /** 
-    @param {(v: T) => number} comparer
+    @param {(entry: T) => number} comparer
     @param {boolean} reversed 
     @returns {Enumerator<T>} */
     enumerate(comparer, reversed = false) {
@@ -677,7 +720,9 @@ export default function () {
   return IntrusiveIndex
 }
 
-
-
-
-
+export const IIA = indexFactory()
+export const IIB = indexFactory()
+export const IIC = indexFactory()
+export const IID = indexFactory()
+export const IIE = indexFactory()
+export const IIF = indexFactory()

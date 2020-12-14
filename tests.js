@@ -42,33 +42,41 @@ function testValues(values) {
     for (let value of values) {
       len++
       if (len % 10 === 0 && index.size) {
-        let i = floor(random() * index.size)
-        let val = index.getAt(i).value
-        index.deleteAt(i)
-        assert(set.delete(val))
-      } else if (value > 0) {
-        let added = index.add({ value })
-        assert(added != set.has(value))
+        let i = Math.abs(value) % index.size
+        let repl = index.getAt(i)
+        let deleted = index.deleteAt(i)
+        assert(deleted === repl)
+        assert(set.delete(repl.value))
+      } else if (value < 0) {
+        let deleted = index.delete({ value: -value })
+        assert(!!deleted == set.delete(-value))
+        assert(!deleted || deleted.value === -value)
+      } else if (len % 2 == 0) {
+        let repl = index.insert({ value })
+        if (repl) assert(repl.value === value)
+        assert(!!repl == set.has(value))
         set.add(value)
       } else {
-        let deleted = index.delete({ value: -value })
-        assert(deleted == set.delete(-value))
+        let added = index.add({ value })
+        assert(!added == set.has(value))
+        set.add(value)
       }
       index.validate()
       assert(index.size == set.size)
     }
-  } catch (err) {
-    console.log(err)
-    console.log('-----------')    
-    console.log(values.slice(0, len).join(', '))
-    console.log('-----------')
-  } finally {
     return { index, set }
+  } catch (err) {
+    console.log(values.slice(0, len).join(', '))
+    console.log('----------')
+    throw err
   }
 }
 function testQueries(index, set) {
   console.log('testing queries...')
-  assert(index.size > 0, 'really?')
+  if (index.size == 0) {
+    console.log('index is empty, aborting...')
+    return
+  }
   let ref = [...set].sort((a, b) => a - b)
   for (let i = -1; i <= ref.length; i++) {
     let node = index.getAt(i)
@@ -121,6 +129,7 @@ function testQueries(index, set) {
 
 }
 let values = generateValues(10000, 100)
+// let values = [-4, 6, 4, 2, 9, -1, -5, -7, 3, 1, 5, 2, 5, 9]
 let { index, set } = testValues(values)
 testQueries(index, set)
 
