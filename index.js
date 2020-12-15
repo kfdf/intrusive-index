@@ -454,29 +454,28 @@ export default function indexFactory() {
       this.reversed = reversed
     }
     moveNext() {
-      let { count } = this
-      this.count = --count
-      if (count < 0) {
+      if (--this.count < 0) {
         this.current = null
         return false
       } 
-      let { nodes } = this
-      let node = nodes.pop()
-      this.current = node
-      if (this.reversed) {
-        node = node[l]
-        while (node) {
-          nodes.push(node)
-          node = node[r]
-        }
-      } else {
-        node = node[r]
-        while (node) {
-          // if (node[d] >>> 2 < count)
-          nodes.push(node)
-          node = node[l]
+      let { nodes, current, reversed } = this
+      if (current) {
+        if (reversed) {
+          current = current[l]
+          while (current) {
+            nodes.push(current)
+            current = current[r]
+          }
+        } else {
+          current = current[r]
+          while (current) {
+            // if (node[d] >>> 2 < this.count)
+            nodes.push(current)
+            current = current[l]
+          }
         }
       }
+      this.current = nodes.pop()
       return true
     }  
     next() {
@@ -581,19 +580,20 @@ export default function indexFactory() {
       return getDetached()
     }
     /**
-    @param {T} value 
+    @param {T | (value: T) => number} value or comparer
     @returns {T | null} */     
     get(value) {
       let { root, comparer } = this
+      let isComp = typeof value === 'function'
       let node = root[l]
       while (node) {
-        let cmp = comparer(node, value)
+        let cmp = isComp ? value(node) : comparer(node, value)
         if (cmp < 0) node = node[r]
         else if (cmp > 0) node = node[l]
         else return node
       }
       return null
-    }
+    }  
     /**
     @param {number} index
     @returns {T | null} */    
