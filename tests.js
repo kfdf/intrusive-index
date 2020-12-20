@@ -1,23 +1,22 @@
 import assert from 'assert'
-import createIndex from './index.js'
+import { IIA, validateIndex } from './index.js'
 const { floor, min, max, random } = Math
-const Index = createIndex()
 
-function printNode(node, l, r, d, padding = 0) {
-  if (node == null) return
-  printNode(node[r], l, r, d, padding + 4)
-  let diff = 
-    (node[d] & 3) == 1 ? '=' : 
-    (node[d] & 3) < 0 ? '<' : '>'
-  let size = node[d] >>> 2
-  console.log(' '.repeat(padding) + size + 
-    ' ' + diff + ' ' + node.value)
-  printNode(node[l], l, r, d, padding + 4)
-} 
 function print(index) {
   let { root } = index
   let { l, r, d } = index.constructor
-  printNode(root[l], l, r, d)
+  printNode(root[l])
+  function printNode(node, padding = 0) {
+    if (node == null) return
+    printNode(node[r], padding + 4)
+    let diff = 
+      (node[d] & 3) == 1 ? '=' : 
+      (node[d] & 3) < 0 ? '<' : '>'
+    let size = node[d] >>> 2
+    console.log(' '.repeat(padding) + size + 
+      ' ' + diff + ' ' + node.value)
+    printNode(node[l], padding + 4)
+  } 
 }
 function generateValues(n = 10, maxValue = 10) {
   console.log('generating values...')
@@ -35,7 +34,7 @@ function generateValues(n = 10, maxValue = 10) {
 
 function testValues(values) {
   console.log('testing operations...')
-  let index = new Index((a, b) => a.value - b.value)
+  let index = new IIA((a, b) => a.value - b.value)
   let set = new Set()
   let len = 0
   try {
@@ -61,7 +60,7 @@ function testValues(values) {
         assert(!added == set.has(value))
         set.add(value)
       }
-      index.validate()
+      validateIndex(index)
       assert(index.size == set.size)
     }
     return { index, set }
@@ -78,10 +77,11 @@ function testQueries(index, set) {
     return
   }
   let ref = [...set].sort((a, b) => a - b)
-  for (let i = -1; i <= ref.length; i++) {
+  for (let i = -2; i <= ref.length; i++) {
     let node = index.getAt(i)
     let value = node ? node.value : null
-    assert(ref[i] == value)
+    let refidx = i < 0 ? ref.length + i + 1 : i
+    assert(ref[refidx] == value)
   }
 
   function getValue(i) {

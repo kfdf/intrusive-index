@@ -1,4 +1,35 @@
-export default function indexFactory() {
+/**
+@template T
+@typedef {Generator<T> & {
+  moveNext: () => boolean;
+  current: T | null;
+}} IndexGenerator */
+
+/**
+@template T
+@typedef IntrusiveIndex 
+@property {() => void} clear 
+@property {number} size
+@property {(value: T) => boolean} add
+@property {(value: T) => (T | null)} insert 
+@property {(value: T) => (T | null)} delete
+@property {(pos: number) => (T | null)} deleteAt
+@property {(valueOrComparer: (T | (a: T) => number) => (T | null)} get
+@property {(pos: number) => (T | null)} getAt
+@property {(comparer: (a: T) => number) => { start: number, end: number}} findRange
+@property {(comparer: (a: T) => number, reversed?: boolean) => IndexGenerator<T>} enumerate 
+@property {(start?: number, end?: number, reversed?: boolean) => IndexGenerator<T>} enumerateRange
+*/
+/**
+@typedef {new <T>(comparer: (a: T, b: T) => number) => IntrusiveIndex<T>} IndexConstructor */
+
+/** 
+@returns {IndexConstructor & {
+  l: symbol;
+  r: symbol;
+  d: symbol;
+}} */
+export default function constructorFactory() {
   const UNCHANGED = 0
   const UPDATED = 1
   const RESIZED = 2
@@ -7,7 +38,6 @@ export default function indexFactory() {
   const r = Symbol('right')
   const d = Symbol('diff')
  
-
   function addRight(curr, node, comparer, replace) {
     let right = curr[r]
     if (right == null) {
@@ -333,8 +363,6 @@ export default function indexFactory() {
       }
     }
   }
-  /**
-  @param {number} index */
   function getAt(node, index) {
     while (true) {
       let size = node[d] >>> 2
@@ -348,23 +376,18 @@ export default function indexFactory() {
       }
     }
   }  
-
-  /** 
-  @param {number} start
-  @param {number} end
-  @param {boolean} reversed  */
   function enumerateRange(node, start, end, reversed) {
     let count = end - start
     if (count === 1) {
-      return new MiniEnumerator(node, null)
+      return new MiniIndexGenerator(node, null)
     }
     if (count === 2) {
       let ascending = start === node[d] >>> 2
       let node2 = getAt(node, start + +ascending)
       if (ascending === reversed) {
-        return new MiniEnumerator(node2, node)
+        return new MiniIndexGenerator(node2, node)
       } else {
-        return new MiniEnumerator(node, node2)
+        return new MiniIndexGenerator(node, node2)
       }
     }
     let nodes = []
@@ -380,77 +403,15 @@ export default function indexFactory() {
         node = node[r]
       } else {
         nodes.push(node)
-        return new Enumerator(nodes, count, reversed)
+        return new IndexGenerator(nodes, count, reversed)
       }
     }
   }
-  function validateNode(node, comparer, isRoot) {
-    if (node == null) return {
-      min: null, max: null,
-      height: 0, size: 0
-    }    
-    if (typeof node[l] != 'object') throw {
-      message: `the 'left' property is not an object`,
-      current: node,
-    }
-    if (typeof node[r] != 'object') throw {
-      message: `the 'right' property is not an object`,
-      current: node,
-    }
-    if (!Number.isSafeInteger(node[d])) throw {
-      message: `the 'diff' property is not an integer`,
-      current: node,
-    }
-
-    let lst = validateNode(node[l], comparer)
-    let rst = validateNode(node[r], comparer)
-
-    if (lst.max && comparer(lst.max, node) >= 0) throw {
-      message: 'the left subtree is ranked higher or equal',
-      current: node,
-      highestRankingLeft: lst.max
-    }
-    if (rst.min && comparer(rst.min, node) <= 0) throw {
-      message: 'the right subtree is ranked lower or equal',
-      current: node, 
-      lowestRankingRight: rst.min
-    }
-    let diff = (node[d] & 3) - 1
-    if (!isRoot && rst.height - lst.height !== diff) throw {
-      message: 'invalid height difference',
-      current: node,
-      currentDiff: diff, 
-      rightHeight: rst.height,
-      leftHeight: lst.height,
-    }
-    let size = node[d] >>> 2
-    if (lst.size !== size) throw {
-      message: 'invalid size',
-      current: node,
-      currentSize: size,
-      actualSize: lst.size,
-    }
-    return {
-      min: lst.min || node, 
-      max: rst.max || node, 
-      height: Math.max(lst.height, rst.height) + 1, 
-      size: lst.size + rst.size + 1,
-    }
-  }
-  /**
-  @template T */  
-  class Enumerator {
-    /**
-    @param {number} count 
-    @param {boolean} reversed */
+  class IndexGenerator {
     constructor(nodes, count, reversed) {
-      /** @type {T?} */
       this.current = null
-      /** @private */
       this.nodes = nodes
-      /** @private */
       this.count = count
-      /** @private */
       this.reversed = reversed
     }
     moveNext() {
@@ -479,25 +440,18 @@ export default function indexFactory() {
       return true
     }  
     next() {
-      if (this.moveNext()) {
-        return { done: false, value: this.current } 
-      } else {
-        return { done: true, value: null }
-      }
+      let done = !this.moveNext()
+      let value = this.current
+      return { done, value }
     }
     [Symbol.iterator]() {
       return this
     }
   }
-  /**
-  @template T */
-  class MiniEnumerator {
+  class MiniIndexGenerator {
     constructor(item, item2) {
-      /** @type {T?} */
       this.current = null
-      /** @private */
       this.item = item
-      /** @private */
       this.item2 = item2
     }
     moveNext() {
@@ -508,25 +462,17 @@ export default function indexFactory() {
       return !!top
     }   
     next() {
-      if (this.moveNext()) {
-        return { done: false, value: this.current } 
-      } else {
-        return { done: true, value: null }
-      }
+      let done = !this.moveNext()
+      let value = this.current
+      return { done, value }
     } 
     [Symbol.iterator]() {
       return this
     }
   }  
-  /**
-  @template T */
-  class IntrusiveIndex {
-    /** 
-    @param {(a: T, b: T) => number} comparer */
+  return class IntrusiveIndex {
     constructor(comparer) {
-      /** @private */
       this.comparer = comparer
-      /** @private */
       this.root = { [l]: null, [r]: null, [d]: 1 }
     }
     get size() {
@@ -538,21 +484,13 @@ export default function indexFactory() {
       root[r] = null
       root[d] = 1
     }
-    /**
-    @param {T} value 
-    @param {boolean} replace 
-    @returns {T | null} */
-    add(value, replace = false) {
+    add(value) {
       let { root, comparer } = this
       value[l] = null
       value[r] = null
       value[d] = 1
       return !!addLeft(root, value, comparer, false)
     }
-    /**
-    @param {T} value 
-    @param {boolean} replace 
-    @returns {T | null} */
     insert(value) {
       let { root, comparer } = this
       value[l] = null
@@ -561,27 +499,17 @@ export default function indexFactory() {
       addLeft(root, value, comparer, true)
       return getDetached()
     }
-
-    /**
-    @param {T} value
-    @returns {T | null} */
     delete(value) {
       let { root, comparer } = this
       deleteLeft(root, value, comparer)
       return getDetached()
     }
-    /**
-    @param {number} value 
-    @returns {T | null} */    
     deleteAt(index) {
       let { root, size } = this
       if (index < 0 || index >= size) return null
       deleteLeftAt(root, index)
       return getDetached()
     }
-    /**
-    @param {T | (value: T) => number} value or comparer
-    @returns {T | null} */     
     get(value) {
       let { root, comparer } = this
       let isComp = typeof value === 'function'
@@ -594,18 +522,12 @@ export default function indexFactory() {
       }
       return null
     }  
-    /**
-    @param {number} index
-    @returns {T | null} */    
     getAt(index) {
       let { root, size } = this
-      if (index >= 0 && index < size) {
-        return getAt(root[l], index)
-      }
+      if (index < 0) index = size + index + 1
+      if (index < size) return getAt(root[l], index)
       return null
     }
-    /**
-    @param {(entry: T) => number} comparer */     
     findRange(comparer) {
       let { root } = this
       let node = root[l]
@@ -637,11 +559,6 @@ export default function indexFactory() {
       if (start == -1) start = end
       return { start, end }
     } 
-
-    /** 
-    @param {(entry: T) => number} comparer
-    @param {boolean} reversed 
-    @returns {Enumerator<T>} */
     enumerate(comparer, reversed = false) {
       let { root } = this
       let curr = root[l]
@@ -651,7 +568,7 @@ export default function indexFactory() {
         else if (cmp > 0) curr = curr[l]
         else break
       }
-      if (!curr) return new MiniEnumerator(null, null)
+      if (!curr) return new MiniIndexGenerator(null, null)
       let start = curr[d] >>> 2
       let end = start + 1
       let offset = 0
@@ -676,18 +593,13 @@ export default function indexFactory() {
       }    
       return enumerateRange(curr, start, end, reversed)
     }
-    /** 
-    @param {number} start
-    @param {number} end
-    @param {boolean} reversed  
-    @returns {Enumerator<T>} */
     enumerateRange(start = 0, end = ~0, reversed = false) {
       let { size, root } = this
       if (end < 0) end = size + end + 1
       start = Math.max(0, start)
       end = Math.min(size, end)
       if (start >= end) {
-        return new MiniEnumerator(null, null)
+        return new MiniIndexGenerator(null, null)
       } 
       let node = root[l]
       while (true) {
@@ -703,10 +615,6 @@ export default function indexFactory() {
         }
       }
     }
-    validate() {
-      let { root, comparer } = this
-      validateNode(root, comparer, true)
-    }
     static get l() {
       return l
     }
@@ -717,12 +625,204 @@ export default function indexFactory() {
       return d
     }
   }
-  return IntrusiveIndex
 }
 
-export const IIA = indexFactory()
-export const IIB = indexFactory()
-export const IIC = indexFactory()
-export const IID = indexFactory()
-export const IIE = indexFactory()
-export const IIF = indexFactory()
+export const IIA = constructorFactory()
+export const IIB = constructorFactory()
+export const IIC = constructorFactory()
+export const IID = constructorFactory()
+export const IIE = constructorFactory()
+export const IIF = constructorFactory()
+
+
+export class Transaction {
+  constructor() {
+    this.indexList = []
+    this.removedList = []
+    this.insertedList = []
+  }
+  /** 
+  @template T
+  @param {IntrusiveIndex<T>} index
+  @param {T} item */
+  add(index, item) {
+    if (!index.add(item)) return false
+    this.indexList.push(index)
+    this.removedList.push(null)
+    this.insertedList.push(item)
+    return true
+  }  
+  /** 
+  @template T
+  @param {IntrusiveIndex<T>} index
+  @param {T} item */  
+  insert(index, item) {
+    let removed = index.insert(item)
+    this.indexList.push(index)
+    this.removedList.push(removed)
+    this.insertedList.push(item)
+    return removed
+  }
+  /** 
+  @template T
+  @param {IntrusiveIndex<T>} index
+  @param {T} item */  
+  delete(index, item) {
+    let removed = index.delete(item)
+    if (!removed) return null
+    this.indexList.push(index)
+    this.removedList.push(removed)
+    this.insertedList.push(null)
+    return removed
+  }
+  /** 
+  @template T
+  @param {IntrusiveIndex<T>} index
+  @param {number} pos */  
+  deleteAt(index, pos) {
+    let removed = index.deleteAt(pos)
+    if (!removed) return null
+    this.indexList.push(index)
+    this.removedList.push(removed)
+    this.insertedList.push(null)
+    return removed
+  }  
+  rollback(error = 'oh noes!') {
+    let { indexList, removedList, insertedList } = this
+    while (indexList.length) {
+      let index = indexList.pop()
+      let removed = removedList.pop()
+      let inserted = insertedList.pop()
+      if (inserted && removed) {
+        if (index.insert(removed) === inserted) continue
+      } else if (inserted) {
+        if (index.delete(inserted) === inserted) continue
+      } else if (removed) {
+        if (index.insert(removed) == null) continue
+      }
+      throw error
+    }
+  }
+}
+
+/**
+@param {IntrusiveIndex<any>} index */
+export function validateIndex(index) {
+  let { root, comparer } = index
+  let { l, r, d } = index.constructor
+  validateNode(root, true)
+  function validateNode(node, isRoot) {
+    if (node == null) return {
+      min: null, max: null,
+      height: 0, size: 0
+    }    
+    if (typeof node[l] != 'object') throw {
+      message: `the 'left' property is not an object`,
+      current: node,
+    }
+    if (typeof node[r] != 'object') throw {
+      message: `the 'right' property is not an object`,
+      current: node,
+    }
+    if (!Number.isSafeInteger(node[d])) throw {
+      message: `the 'diff' property is not an integer`,
+      current: node,
+    }
+  
+    let lst = validateNode(node[l])
+    let rst = validateNode(node[r])
+  
+    if (lst.max && comparer(lst.max, node) >= 0) throw {
+      message: 'the left subtree is ranked higher or equal',
+      current: node,
+      highestRankingLeft: lst.max
+    }
+    if (rst.min && comparer(rst.min, node) <= 0) throw {
+      message: 'the right subtree is ranked lower or equal',
+      current: node, 
+      lowestRankingRight: rst.min
+    }
+    let diff = (node[d] & 3) - 1
+    if (!isRoot && rst.height - lst.height !== diff) throw {
+      message: 'invalid height difference',
+      current: node,
+      currentDiff: diff, 
+      rightHeight: rst.height,
+      leftHeight: lst.height,
+    }
+    let size = node[d] >>> 2
+    if (lst.size !== size) throw {
+      message: 'invalid size',
+      current: node,
+      currentSize: size,
+      actualSize: lst.size,
+    }
+    return {
+      min: lst.min || node, 
+      max: rst.max || node, 
+      height: Math.max(lst.height, rst.height) + 1, 
+      size: lst.size + rst.size + 1,
+    }
+  }  
+}
+/** 
+@param {Transaction} transaction
+@param {IntrusiveIndex<any>[][]} tables */
+export function validateTransaction(transaction, tables) {
+  let indexGroups = new Map()
+  for (let indexGroup of tables) {
+    let entry = { indexGroup, rows: new Set() }      
+    for (let index of indexGroup) {
+      indexGroups.set(index, entry)
+    }
+  }
+  let { indexList, removedList, insertedList } = transaction 
+  for (let i = 0; i < indexList.length; i++) {
+    let { rows } = indexGroups.get(indexList[i])
+    let removed = removedList[i]
+    if (removed) rows.add(removed)
+    let inserted = insertedList[i]
+    if (inserted) rows.add(inserted)
+  }
+  for (let { indexGroup, rows } of indexGroups.values()) {
+    for (let row of rows) {
+      let first
+      for (let index of indexGroup) {
+        if (first === undefined) {
+          first = index.get(row)
+        } else {
+          assert(index.get(row) === first)
+        }
+      }
+    }
+  }
+}
+
+/**
+@template T
+@param {Transaction} tr
+@param {IntrusiveIndex<T>} index
+@param {T} newRow
+@param {T} oldRow
+@param {any?} error */
+export function replace(tr, index, newRow, oldRow, error = 'oh noes!') {
+  let removed = tr.insert(index, newRow)
+  removed = removed || oldRow && tr.delete(oldRow)
+  if (removed != oldRow) throw error
+  return removed
+}
+
+/**
+@template T
+@param {Transaction} tr
+@param {IntrusiveIndex<T>} index
+@param {(a: T) => number} comparer
+@param {any?} error */
+export function* deleteRange(tr, index, comparer, error = 'oh noes!') {
+  let { start, end } = index.findRange(comparer)
+  while (start < end--) {
+    let deleted = tr.deleteAt(start)
+    if (!deleted) throw error
+    yield deleted
+  }
+}
