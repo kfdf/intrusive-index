@@ -51,7 +51,7 @@ export default function constructorFactory() {
       result = addRight(right, node, comparer, replace)
     } else if (cmp > 0) {
       result = addLeft(right, node, comparer, replace)
-    } else if (replace) {
+    } else if (replace && right !== node) {
       curr[r] = detachNode(right, node)
     } else {
       detachedNode = null
@@ -79,7 +79,7 @@ export default function constructorFactory() {
       result = addRight(left, node, comparer, replace)
     } else if (cmp > 0) {
       result = addLeft(left, node, comparer, replace)
-    } else if (replace) {
+    } else if (replace && left !== node) {
       curr[l] = detachNode(left, node)
     } else {
       detachedNode = null
@@ -336,7 +336,7 @@ export default function constructorFactory() {
         node[d] -= leftSize + 4
         return left
       } else {
-  //               0-             1       
+  //               0-            1       
   //       2        |x|      ?       ?   
   //    |x|    ?          |x| |x? |x? |x|
   //        |x? |x?                      
@@ -687,24 +687,40 @@ export class Transaction {
     this.insertedList.push(null)
     return removed
   }  
-  rollback(error = 'oh noes!') {
+  rollback() {
     let { indexList, removedList, insertedList } = this
     while (indexList.length) {
       let index = indexList.pop()
       let removed = removedList.pop()
       let inserted = insertedList.pop()
+      let current
       if (inserted && removed) {
-        if (index.insert(removed) === inserted) continue
+        current = index.insert(removed)
       } else if (inserted) {
-        if (index.delete(inserted) === inserted) continue
+        current = index.delete(inserted)
       } else if (removed) {
-        if (index.insert(removed) == null) continue
+        current = index.insert(removed)
       }
-      throw error
+      if (current !== inserted) throw {
+        message: 'rollback failed',
+        current, 
+        expected: inserted,
+        position: indexList.length,
+      }
     }
   }
 }
-
+/**
+@template T
+@param {Transaction} tr
+@param {IntrusiveIndex<T>} index
+@param {T} newValue
+@param {T} oldValue */
+export function replace(tr, index, newValue, oldValue) {
+  let removed = tr.insert(index, newValue)
+  removed = removed || oldValue && tr.delete(oldValue)
+  return removed !== oldValue
+}
 /**
 @param {IntrusiveIndex<any>} index */
 export function validateIndex(index) {
@@ -769,60 +785,38 @@ export function validateIndex(index) {
 @param {Transaction} transaction
 @param {IntrusiveIndex<any>[][]} tables */
 export function validateTransaction(transaction, tables) {
-  let indexGroups = new Map()
-  for (let indexGroup of tables) {
-    let entry = { indexGroup, rows: new Set() }      
-    for (let index of indexGroup) {
-      indexGroups.set(index, entry)
+  let tableIndex = new Map()
+  let tableEntries = []
+  for (let table of tables) {
+    let tableEntry = { table, rows: new Set() }      
+    tableEntries.push(tableEntry)
+    for (let index of table) {
+      tableIndex.set(index, tableEntry)
     }
   }
   let { indexList, removedList, insertedList } = transaction 
   for (let i = 0; i < indexList.length; i++) {
-    let { rows } = indexGroups.get(indexList[i])
+    let entry = tableIndex.get(indexList[i])
+    if (!entry) continue
     let removed = removedList[i]
-    if (removed) rows.add(removed)
+    if (removed) entry.rows.add(removed)
     let inserted = insertedList[i]
-    if (inserted) rows.add(inserted)
+    if (inserted) entry.rows.add(inserted)
   }
-  for (let { indexGroup, rows } of indexGroups.values()) {
+  for (let { table, rows } of tableEntries) {
     for (let row of rows) {
       let first
-      for (let index of indexGroup) {
+      for (let index of table) {
         if (first === undefined) {
           first = index.get(row)
         } else {
-          assert(index.get(row) === first)
+          if (index.get(row) !== first) throw {
+            message: 'validation failed',
+            current: row, 
+            expected: first,
+          }
         }
       }
     }
-  }
-}
-
-/**
-@template T
-@param {Transaction} tr
-@param {IntrusiveIndex<T>} index
-@param {T} newRow
-@param {T} oldRow
-@param {any?} error */
-export function replace(tr, index, newRow, oldRow, error = 'oh noes!') {
-  let removed = tr.insert(index, newRow)
-  removed = removed || oldRow && tr.delete(oldRow)
-  if (removed != oldRow) throw error
-  return removed
-}
-
-/**
-@template T
-@param {Transaction} tr
-@param {IntrusiveIndex<T>} index
-@param {(a: T) => number} comparer
-@param {any?} error */
-export function* deleteRange(tr, index, comparer, error = 'oh noes!') {
-  let { start, end } = index.findRange(comparer)
-  while (start < end--) {
-    let deleted = tr.deleteAt(start)
-    if (!deleted) throw error
-    yield deleted
   }
 }
