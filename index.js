@@ -687,6 +687,16 @@ export class Transaction {
     this.insertedList.push(null)
     return removed
   }  
+  /**
+  @template T
+  @param {IntrusiveIndex<T>} index
+  @param {T} item
+  @param {T} replacee */
+  replace(index, item, replacee) {
+    let removed = this.insert(index, item)
+    removed = removed || replacee && this.delete(replacee)
+    return removed !== replacee
+  }  
   rollback() {
     let { indexList, removedList, insertedList } = this
     while (indexList.length) {
@@ -710,113 +720,4 @@ export class Transaction {
     }
   }
 }
-/**
-@template T
-@param {Transaction} tr
-@param {IntrusiveIndex<T>} index
-@param {T} newValue
-@param {T} oldValue */
-export function replace(tr, index, newValue, oldValue) {
-  let removed = tr.insert(index, newValue)
-  removed = removed || oldValue && tr.delete(oldValue)
-  return removed !== oldValue
-}
-/**
-@param {IntrusiveIndex<any>} index */
-export function validateIndex(index) {
-  let { root, comparer } = index
-  let { l, r, d } = index.constructor
-  validateNode(root, true)
-  function validateNode(node, isRoot) {
-    if (node == null) return {
-      min: null, max: null,
-      height: 0, size: 0
-    }    
-    if (typeof node[l] != 'object') throw {
-      message: `the 'left' property is not an object`,
-      current: node,
-    }
-    if (typeof node[r] != 'object') throw {
-      message: `the 'right' property is not an object`,
-      current: node,
-    }
-    if (!Number.isSafeInteger(node[d])) throw {
-      message: `the 'diff' property is not an integer`,
-      current: node,
-    }
-  
-    let lst = validateNode(node[l])
-    let rst = validateNode(node[r])
-  
-    if (lst.max && comparer(lst.max, node) >= 0) throw {
-      message: 'the left subtree is ranked higher or equal',
-      current: node,
-      highestRankingLeft: lst.max
-    }
-    if (rst.min && comparer(rst.min, node) <= 0) throw {
-      message: 'the right subtree is ranked lower or equal',
-      current: node, 
-      lowestRankingRight: rst.min
-    }
-    let diff = (node[d] & 3) - 1
-    if (!isRoot && rst.height - lst.height !== diff) throw {
-      message: 'invalid height difference',
-      current: node,
-      currentDiff: diff, 
-      rightHeight: rst.height,
-      leftHeight: lst.height,
-    }
-    let size = node[d] >>> 2
-    if (lst.size !== size) throw {
-      message: 'invalid size',
-      current: node,
-      currentSize: size,
-      actualSize: lst.size,
-    }
-    return {
-      min: lst.min || node, 
-      max: rst.max || node, 
-      height: Math.max(lst.height, rst.height) + 1, 
-      size: lst.size + rst.size + 1,
-    }
-  }  
-}
-/** 
-@param {Transaction} transaction
-@param {IntrusiveIndex<any>[][]} tables */
-export function validateTransaction(transaction, tables) {
-  let tableIndex = new Map()
-  let tableEntries = []
-  for (let table of tables) {
-    let tableEntry = { table, rows: new Set() }      
-    tableEntries.push(tableEntry)
-    for (let index of table) {
-      tableIndex.set(index, tableEntry)
-    }
-  }
-  let { indexList, removedList, insertedList } = transaction 
-  for (let i = 0; i < indexList.length; i++) {
-    let entry = tableIndex.get(indexList[i])
-    if (!entry) continue
-    let removed = removedList[i]
-    if (removed) entry.rows.add(removed)
-    let inserted = insertedList[i]
-    if (inserted) entry.rows.add(inserted)
-  }
-  for (let { table, rows } of tableEntries) {
-    for (let row of rows) {
-      let first
-      for (let index of table) {
-        if (first === undefined) {
-          first = index.get(row)
-        } else {
-          if (index.get(row) !== first) throw {
-            message: 'validation failed',
-            current: row, 
-            expected: first,
-          }
-        }
-      }
-    }
-  }
-}
+
