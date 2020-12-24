@@ -1,34 +1,3 @@
-/**
-@template T
-@typedef {Generator<T> & {
-  moveNext: () => boolean;
-  current: T | null;
-}} IndexGenerator */
-
-/**
-@template T
-@typedef IntrusiveIndex 
-@property {() => void} clear 
-@property {number} size
-@property {(value: T) => boolean} add
-@property {(value: T) => (T | null)} insert 
-@property {(value: T) => (T | null)} delete
-@property {(pos: number) => (T | null)} deleteAt
-@property {(valueOrComparer: (T | (a: T) => number) => (T | null)} get
-@property {(pos: number) => (T | null)} getAt
-@property {(comparer: (a: T) => number) => { start: number, end: number}} findRange
-@property {(comparer: (a: T) => number, reversed?: boolean) => IndexGenerator<T>} enumerate 
-@property {(start?: number, end?: number, reversed?: boolean) => IndexGenerator<T>} enumerateRange
-*/
-/**
-@typedef {new <T>(comparer: (a: T, b: T) => number) => IntrusiveIndex<T>} IndexConstructor */
-
-/** 
-@returns {IndexConstructor & {
-  l: symbol;
-  r: symbol;
-  d: symbol;
-}} */
 export default function constructorFactory() {
   const UNCHANGED = 0
   const UPDATED = 1
@@ -634,17 +603,12 @@ export const IID = constructorFactory()
 export const IIE = constructorFactory()
 export const IIF = constructorFactory()
 
-
 export class Transaction {
   constructor() {
     this.indexList = []
     this.removedList = []
     this.insertedList = []
   }
-  /** 
-  @template T
-  @param {IntrusiveIndex<T>} index
-  @param {T} item */
   add(index, item) {
     if (!index.add(item)) return false
     this.indexList.push(index)
@@ -652,10 +616,6 @@ export class Transaction {
     this.insertedList.push(item)
     return true
   }  
-  /** 
-  @template T
-  @param {IntrusiveIndex<T>} index
-  @param {T} item */  
   insert(index, item) {
     let removed = index.insert(item)
     this.indexList.push(index)
@@ -663,10 +623,6 @@ export class Transaction {
     this.insertedList.push(item)
     return removed
   }
-  /** 
-  @template T
-  @param {IntrusiveIndex<T>} index
-  @param {T} item */  
   delete(index, item) {
     let removed = index.delete(item)
     if (!removed) return null
@@ -675,10 +631,6 @@ export class Transaction {
     this.insertedList.push(null)
     return removed
   }
-  /** 
-  @template T
-  @param {IntrusiveIndex<T>} index
-  @param {number} pos */  
   deleteAt(index, pos) {
     let removed = index.deleteAt(pos)
     if (!removed) return null
@@ -687,11 +639,6 @@ export class Transaction {
     this.insertedList.push(null)
     return removed
   }  
-  /**
-  @template T
-  @param {IntrusiveIndex<T>} index
-  @param {T} item
-  @param {T} replacee */
   replace(index, item, replacee) {
     let removed = this.insert(index, item)
     removed = removed || replacee && this.delete(replacee)
@@ -720,4 +667,3 @@ export class Transaction {
     }
   }
 }
-
