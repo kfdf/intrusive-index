@@ -2,21 +2,23 @@ interface IndexGenerator<T> extends Generator<T> {
   moveNext: () => boolean;
   current: T | null;
 }
-export interface IntrusiveIndex<T> {
+
+export interface IntrusiveIndex<T extends U, U = T> {
   clear(): void;
   size: number;
   add(value: T): boolean;
   insert(value: T): T | null;
-  delete(value: T): T | null;
+  delete(value: U): T | null;
   deleteAt(pos: number): T | null;
-  get(valueOrComparer: (T | ((a: T) => number))): T | null;
+  get(valueOrComparer: (U | ((a: U) => number))): T | null;
   getAt(pos: number): T | null;
-  findRange(comparer: (a: T) => number): { start: number, end: number};
-  enumerate (comparer: (a: T) => number, reversed?: boolean): IndexGenerator<T>
+  findRange(comparer: (a: U) => number): { start: number, end: number};
+  enumerate (comparer: (a: U) => number, reversed?: boolean): IndexGenerator<T>
   enumerateRange(start?: number, end?: number, reversed?: boolean): IndexGenerator<T>
 }
+
 interface IndexConstructor {
-  new <T>(comparer: (a: T, b: T) => number): IntrusiveIndex<T>
+  new <T extends U, U>(comparer: (a: U, b: U) => number): IntrusiveIndex<T, U>
   l: symbol;
   r: symbol;
   d: symbol;
@@ -30,10 +32,10 @@ export const IIE: IndexConstructor;
 export const IIF: IndexConstructor;
 
 export class Transaction {
-  add<T>(index: IntrusiveIndex<T>, item: T): boolean;
-  insert<T>(index: IntrusiveIndex<T>, item: T): T | null;
-  delete<T>(index: IntrusiveIndex<T>, item: T): T | null;
-  deleteAt<T>(index: IntrusiveIndex<T>, pos: number): T | null;
-  replace<T>(index: IntrusiveIndex<T>, item: T, replacee: T): boolean;
+  add<T>(index: IntrusiveIndex<T, any>, item: T): boolean;
+  insert<T>(index: IntrusiveIndex<T, any>, item: T): T | null;
+  delete<T extends U, U>(index: IntrusiveIndex<T, U>, item: U): T | null;
+  deleteAt<T>(index: IntrusiveIndex<T, any>, pos: number): T | null;
+  replace<T>(index: IntrusiveIndex<T, any>, item: T, replacee: T): boolean;
   rollback(): void;
 }

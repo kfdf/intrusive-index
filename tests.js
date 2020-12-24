@@ -18,8 +18,6 @@ function print(index) {
     printNode(node[l], padding + 4)
   } 
 }
-/**
-@param {IntrusiveIndex<any>} index */
 export function validateIndex(index) {
   let { root, comparer } = index
   let { l, r, d } = index.constructor
