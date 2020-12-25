@@ -1,41 +1,41 @@
 interface IndexGenerator<T> extends Generator<T> {
-  moveNext: () => boolean;
-  current: T | null;
+  moveNext: () => boolean
+  current: T | null
 }
 
 export interface IntrusiveIndex<T extends U, U = T> {
-  clear(): void;
-  size: number;
-  add(value: T): boolean;
-  insert(value: T): T | null;
-  delete(value: U): T | null;
-  deleteAt(pos: number): T | null;
-  get(valueOrComparer: (U | ((a: U) => number))): T | null;
-  getAt(pos: number): T | null;
-  findRange(comparer: (a: U) => number): { start: number, end: number};
+  clear(): void
+  size: number
+  add(value: T): boolean
+  insert(value: T): T | null
+  delete(value: U): T | null
+  deleteAt(pos: number): T | null
+  get(valueOrComparer: (U | ((a: U) => number))): T | null
+  getAt(pos: number): T | null
+  findRange(comparer: (a: U) => number): { start: number, end: number}
   enumerate (comparer: (a: U) => number, reversed?: boolean): IndexGenerator<T>
   enumerateRange(start?: number, end?: number, reversed?: boolean): IndexGenerator<T>
 }
 
 interface IndexConstructor {
-  new <T extends U, U>(comparer: (a: U, b: U) => number): IntrusiveIndex<T, U>
-  l: symbol;
-  r: symbol;
-  d: symbol;
+  new <T extends U, U = T>(comparer: (a: U, b: U) => number): IntrusiveIndex<T, U>
+  l: symbol
+  r: symbol
+  d: symbol
 }
-export default function constructorFactory(): IndexConstructor;
-export const IIA: IndexConstructor;
-export const IIB: IndexConstructor;
-export const IIC: IndexConstructor;
-export const IID: IndexConstructor;
-export const IIE: IndexConstructor;
-export const IIF: IndexConstructor;
+export default function constructorFactory(): IndexConstructor
+export const IIA: IndexConstructor
+export const IIB: IndexConstructor
+export const IIC: IndexConstructor
+export const IID: IndexConstructor
+export const IIE: IndexConstructor
+export const IIF: IndexConstructor
 
 export class Transaction {
-  add<T>(index: IntrusiveIndex<T, any>, item: T): boolean;
-  insert<T>(index: IntrusiveIndex<T, any>, item: T): T | null;
-  delete<T extends U, U>(index: IntrusiveIndex<T, U>, item: U): T | null;
-  deleteAt<T>(index: IntrusiveIndex<T, any>, pos: number): T | null;
-  replace<T>(index: IntrusiveIndex<T, any>, item: T, replacee: T): boolean;
-  rollback(): void;
+  add<T>(index: IntrusiveIndex<T, any>, item: T): boolean
+  insert<T>(index: IntrusiveIndex<T, any>, item: T): T | null
+  delete<T extends U, U>(index: IntrusiveIndex<T, U>, item: U): T | null
+  deleteAt<T>(index: IntrusiveIndex<T, any>, pos: number): T | null
+  replace<T>(index: IntrusiveIndex<T, any>, item: T, replacee: T): boolean
+  rollback(): void
 }
