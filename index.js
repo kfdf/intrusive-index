@@ -7,19 +7,19 @@ export default function constructorFactory() {
   const r = Symbol('right')
   const d = Symbol('diff')
  
-  function addRight(curr, node, comparer, replace) {
+  function addRight(curr, node, comp, replace) {
     let right = curr[r]
     if (right == null) {
       curr[r] = node
       detachedNode = null
       return (++curr[d] & 3) === 2 ? RESIZED : UPDATED
     } 
-    let cmp = comparer(right, node)
+    let cmp = comp(right, node)
     let result = UNCHANGED
     if (cmp < 0) {
-      result = addRight(right, node, comparer, replace)
+      result = addRight(right, node, comp, replace)
     } else if (cmp > 0) {
-      result = addLeft(right, node, comparer, replace)
+      result = addLeft(right, node, comp, replace)
     } else if (replace && right !== node) {
       curr[r] = detachNode(right, node)
     } else {
@@ -34,7 +34,7 @@ export default function constructorFactory() {
     return (++curr[d] & 3) === 2 ? RESIZED : UPDATED
   }  
  
-  function addLeft(curr, node, comparer, replace) {
+  function addLeft(curr, node, comp, replace) {
     let left = curr[l]
     if (left == null) {
       curr[l] = node
@@ -42,12 +42,12 @@ export default function constructorFactory() {
       detachedNode = null
       return (--curr[d] & 3) === 0 ? RESIZED : UPDATED
     }    
-    let cmp = comparer(left, node)
+    let cmp = comp(left, node)
     let result = UNCHANGED
     if (cmp < 0) {
-      result = addRight(left, node, comparer, replace)
+      result = addRight(left, node, comp, replace)
     } else if (cmp > 0) {
-      result = addLeft(left, node, comparer, replace)
+      result = addLeft(left, node, comp, replace)
     } else if (replace && left !== node) {
       curr[l] = detachNode(left, node)
     } else {
@@ -82,19 +82,19 @@ export default function constructorFactory() {
   }
   /** 
   @returns {0|1|2|3} */
-  function deleteLeft(curr, value, comparer) {
+  function deleteLeft(curr, value, comp) {
     let left = curr[l]
     if (left == null) {
       detachedNode = null
       return UNCHANGED
     }
-    let cmp = comparer(left, value)
+    let cmp = comp(left, value)
     /** @type {0|1|2|3} */
     let result
     if (cmp > 0) {
-      result = deleteLeft(left, value, comparer)
+      result = deleteLeft(left, value, comp)
     } else if (cmp < 0) {
-      result = deleteRight(left, value, comparer)
+      result = deleteRight(left, value, comp)
     } else if (left[l] && left[r]) {
       let size = left[d] >>> 2
       result = deleteLeftAt(left, size - 1)
@@ -189,19 +189,19 @@ export default function constructorFactory() {
   }
   /** 
   @returns {0|1|2|3} */
-  function deleteRight(curr, value, comparer) {
+  function deleteRight(curr, value, comp) {
     let right = curr[r]
     if (right == null) {
       detachedNode = null
       return UNCHANGED  
     }
-    let cmp = comparer(right, value)
+    let cmp = comp(right, value)
     /** @type {0|1|2|3} */
     let result
     if (cmp > 0) {
-      result = deleteLeft(right, value, comparer)
+      result = deleteLeft(right, value, comp)
     } else if (cmp < 0) {
-      result = deleteRight(right, value, comparer)
+      result = deleteRight(right, value, comp)
     } else if (right[l] && right[r]) {
       let size = right[d] >>> 2
       result = deleteLeftAt(right, size - 1)
@@ -440,8 +440,8 @@ export default function constructorFactory() {
     }
   }  
   return class IntrusiveIndex {
-    constructor(comparer) {
-      this.comparer = comparer
+    constructor(comp) {
+      this.comp = comp
       this.root = { [l]: null, [r]: null, [d]: 1 }
     }
     get size() {
@@ -454,23 +454,23 @@ export default function constructorFactory() {
       root[d] = 1
     }
     add(value) {
-      let { root, comparer } = this
+      let { root, comp } = this
       value[l] = null
       value[r] = null
       value[d] = 1
-      return !!addLeft(root, value, comparer, false)
+      return !!addLeft(root, value, comp, false)
     }
     insert(value) {
-      let { root, comparer } = this
+      let { root, comp } = this
       value[l] = null
       value[r] = null
       value[d] = 1
-      addLeft(root, value, comparer, true)
+      addLeft(root, value, comp, true)
       return getDetached()
     }
     delete(value) {
-      let { root, comparer } = this
-      deleteLeft(root, value, comparer)
+      let { root, comp } = this
+      deleteLeft(root, value, comp)
       return getDetached()
     }
     deleteAt(index) {
@@ -480,11 +480,11 @@ export default function constructorFactory() {
       return getDetached()
     }
     get(value) {
-      let { root, comparer } = this
+      let { root, comp } = this
       let isComp = typeof value === 'function'
       let node = root[l]
       while (node) {
-        let cmp = isComp ? value(node) : comparer(node, value)
+        let cmp = isComp ? value(node) : comp(node, value)
         if (cmp < 0) node = node[r]
         else if (cmp > 0) node = node[l]
         else return node
@@ -497,13 +497,13 @@ export default function constructorFactory() {
       if (index < size) return getAt(root[l], index)
       return null
     }
-    findRange(comparer) {
+    findRange(comp) {
       let { root } = this
       let node = root[l]
       let end = 0
       let start = -1
       while (node) {
-        let cmp = comparer(node)
+        let cmp = comp(node)
         if (cmp > 0) {
           node = node[l]
           continue
@@ -513,7 +513,7 @@ export default function constructorFactory() {
           let offset = end
           let node2 = node[l]
           while (node2) {
-            if (comparer(node2) < 0) {
+            if (comp(node2) < 0) {
               offset += (node2[d] >>> 2) + 1
               node2 = node2[r]
             } else {
@@ -528,11 +528,11 @@ export default function constructorFactory() {
       if (start === -1) start = end
       return { start, end }
     } 
-    enumerate(comparer, reversed = false) {
+    enumerate(comp, reversed = false) {
       let { root } = this
       let curr = root[l]
       while (curr) {
-        let cmp = comparer(curr)
+        let cmp = comp(curr)
         if (cmp < 0) curr = curr[r]
         else if (cmp > 0) curr = curr[l]
         else break
@@ -543,7 +543,7 @@ export default function constructorFactory() {
       let offset = 0
       let node = curr[l]
       while (node) {
-        if (comparer(node) >= 0) {
+        if (comp(node) >= 0) {
           start = offset + (node[d] >>> 2)
           node = node[l]
         } else {
@@ -553,7 +553,7 @@ export default function constructorFactory() {
       }
       node = curr[r]
       while (node) {
-        if (comparer(node) > 0) {
+        if (comp(node) > 0) {
           node = node[l]
         } else {
           end += (node[d] >>> 2) + 1

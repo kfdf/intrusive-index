@@ -19,7 +19,7 @@ function print(index) {
   } 
 }
 export function validateIndex(index) {
-  let { root, comparer } = index
+  let { root, comp } = index
   let { l, r, d } = index.constructor
   validateNode(root, true)
   function validateNode(node, isRoot) {
@@ -43,12 +43,12 @@ export function validateIndex(index) {
     let lst = validateNode(node[l])
     let rst = validateNode(node[r])
   
-    if (lst.max && comparer(lst.max, node) >= 0) throw {
+    if (lst.max && comp(lst.max, node) >= 0) throw {
       message: 'the left subtree is ranked higher or equal',
       current: node,
       highestRankingLeft: lst.max
     }
-    if (rst.min && comparer(rst.min, node) <= 0) throw {
+    if (rst.min && comp(rst.min, node) <= 0) throw {
       message: 'the right subtree is ranked lower or equal',
       current: node, 
       lowestRankingRight: rst.min
