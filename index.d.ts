@@ -2,23 +2,28 @@ interface IndexGenerator<T> extends Generator<T> {
   moveNext: () => boolean
   current: T | null
 }
-
+interface BinaryComparer<T> {
+  (a: T, b: T): number
+}
+interface UnaryComparer<T> {
+  (a: T): number
+}
 export interface IntrusiveIndex<T extends U, U = T> {
+  readonly comparer: BinaryComparer<U>
+  readonly size: number
   clear(): void
-  size: number
   add(value: T): boolean
   insert(value: T): T | null
   delete(value: U): T | null
   deleteAt(pos: number): T | null
-  get(valueOrComparer: (U | ((a: U) => number))): T | null
+  get(valueOrComparer: U | UnaryComparer<U>): T | null
   getAt(pos: number): T | null
-  findRange(comparer: (a: U) => number): { start: number, end: number}
-  enumerate (comparer: (a: U) => number, reversed?: boolean): IndexGenerator<T>
+  findRange(comparer: UnaryComparer<U>): { start: number, end: number}
+  enumerate (comparer: UnaryComparer<U>, reversed?: boolean): IndexGenerator<T>
   enumerateRange(start?: number, end?: number, reversed?: boolean): IndexGenerator<T>
 }
-
-interface IndexConstructor {
-  new <T extends U, U = T>(comparer: (a: U, b: U) => number): IntrusiveIndex<T, U>
+interface IndexConstructor {          
+  new <T extends U, U = T>(comparer: BinaryComparer<U>): IntrusiveIndex<T, U>
   l: symbol
   r: symbol
   d: symbol

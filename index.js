@@ -12,7 +12,7 @@ export default function constructorFactory() {
     if (right == null) {
       curr[r] = node
       detachedNode = null
-      return (++curr[d] & 3) == 2 ? RESIZED : UPDATED
+      return (++curr[d] & 3) === 2 ? RESIZED : UPDATED
     } 
     let cmp = comparer(right, node)
     let result = UNCHANGED
@@ -26,12 +26,12 @@ export default function constructorFactory() {
       detachedNode = null
     }
     if (result < RESIZED) return result
-    if (result == UNBALANCED) {
+    if (result === UNBALANCED) {
       curr[r] = right = rotate(right)
-      if ((right[d] & 3) == 1) return UPDATED
+      if ((right[d] & 3) === 1) return UPDATED
     }
-    if ((curr[d] & 3) == 2) return UNBALANCED
-    return (++curr[d] & 3) == 2 ? RESIZED : UPDATED
+    if ((curr[d] & 3) === 2) return UNBALANCED
+    return (++curr[d] & 3) === 2 ? RESIZED : UPDATED
   }  
  
   function addLeft(curr, node, comparer, replace) {
@@ -40,7 +40,7 @@ export default function constructorFactory() {
       curr[l] = node
       curr[d] += 4
       detachedNode = null
-      return (--curr[d] & 3) == 0 ? RESIZED : UPDATED
+      return (--curr[d] & 3) === 0 ? RESIZED : UPDATED
     }    
     let cmp = comparer(left, node)
     let result = UNCHANGED
@@ -53,15 +53,15 @@ export default function constructorFactory() {
     } else {
       detachedNode = null
     }
-    if (result == UNCHANGED) return UNCHANGED
+    if (result === UNCHANGED) return UNCHANGED
     curr[d] += 4
-    if (result == UPDATED) return UPDATED
-    if (result == UNBALANCED) {
+    if (result === UPDATED) return UPDATED
+    if (result === UNBALANCED) {
       curr[l] = left = rotate(left)
-      if ((left[d] & 3) == 1) return UPDATED
+      if ((left[d] & 3) === 1) return UPDATED
     }
-    if ((curr[d] & 3) == 0) return UNBALANCED
-    return (--curr[d] & 3) == 0 ? RESIZED : UPDATED
+    if ((curr[d] & 3) === 0) return UNBALANCED
+    return (--curr[d] & 3) === 0 ? RESIZED : UPDATED
   }  
   let detachedNode = null  
   function detachNode(target, repl) {
@@ -104,9 +104,9 @@ export default function constructorFactory() {
       curr[l] = left = left[l] || left[r]
       result = RESIZED
     }
-    if (result == UNCHANGED) return UNCHANGED
+    if (result === UNCHANGED) return UNCHANGED
     curr[d] -= 4
-    if (result == UPDATED) return UPDATED  
+    if (result === UPDATED) return UPDATED  
     return deleteLeftFix(curr, result)
   }  
   /** 
@@ -129,19 +129,19 @@ export default function constructorFactory() {
       result = RESIZED
     }
     curr[d] -= 4
-    if (result == UPDATED) return UPDATED  
+    if (result === UPDATED) return UPDATED  
     return deleteLeftFix(curr, result)
   }  
   /**
   @param {2|3} result */
   function deleteLeftFix(curr, result) {
-    if (result == UNBALANCED) {
+    if (result === UNBALANCED) {
       let left = rotate(curr[l]) 
       curr[l] = left
       if ((left[d] & 3) != 1) return UPDATED
     }
-    if ((curr[d] & 3) == 2) return UNBALANCED
-    return (++curr[d] & 3) == 2 ? UPDATED : RESIZED
+    if ((curr[d] & 3) === 2) return UNBALANCED
+    return (++curr[d] & 3) === 2 ? UPDATED : RESIZED
   }  
   /** 
   @returns {1|2|3} */
@@ -162,7 +162,7 @@ export default function constructorFactory() {
       curr[r] = right = right[l] || right[r]
       result = RESIZED
     }
-    if (result == UPDATED) return UPDATED
+    if (result === UPDATED) return UPDATED
     return deleteRightFix(curr, result)
   }  
   /** 
@@ -184,7 +184,7 @@ export default function constructorFactory() {
       curr[r] = right = right[l] || right[r]
       result = RESIZED
     }
-    if (result == UPDATED) return UPDATED
+    if (result === UPDATED) return UPDATED
     return deleteRightFix(curr, result)
   }
   /** 
@@ -211,24 +211,24 @@ export default function constructorFactory() {
       curr[r] = right = right[l] || right[r]
       result = RESIZED
     }
-    if (result == UNCHANGED) return UNCHANGED
-    if (result == UPDATED) return UPDATED
+    if (result === UNCHANGED) return UNCHANGED
+    if (result === UPDATED) return UPDATED
     return deleteRightFix(curr, result)
   }
   /** 
   @param {2|3} result */
   function deleteRightFix(curr, result) {
-    if (result == UNBALANCED) {
+    if (result === UNBALANCED) {
       let right = rotate(curr[r])
       curr[r] = right
       if ((right[d] & 3) != 1) return UPDATED
     }
-    if ((curr[d] & 3) == 0) return UNBALANCED
-    return (--curr[d] & 3) == 0 ? UPDATED : RESIZED
+    if ((curr[d] & 3) === 0) return UNBALANCED
+    return (--curr[d] & 3) === 0 ? UPDATED : RESIZED
   }  
 
   function rotate(node) {
-    if ((node[d] & 3) == 2) {
+    if ((node[d] & 3) === 2) {
   //    2+                    0       
   // |x|    1             2    |x|    
   //     |x| |x|       |x| |x| |1|    
@@ -242,7 +242,7 @@ export default function constructorFactory() {
       let diff = right[d] & 3
       let nodeSize = node[d] & ~3
       if (diff >= 1) {
-        if (diff == 2) {
+        if (diff === 2) {
           node[d] = nodeSize | 1
           right[d] = right[d] & ~3 | 1
         } else {
@@ -260,10 +260,10 @@ export default function constructorFactory() {
   //     |x? |x?                      
         let left = right[l]
         let diff = left[d] & 3
-        if (diff == 2) {
+        if (diff === 2) {
           node[d] = nodeSize
           right[d] = right[d] & ~3 | 1
-        } else if (diff == 0) {
+        } else if (diff === 0) {
           node[d] = nodeSize | 1
           right[d] = right[d] & ~3 | 2
         } else {
@@ -293,7 +293,7 @@ export default function constructorFactory() {
       let leftSize = left[d] & ~3
       let diff = left[d] & 3
       if (diff <= 1) {
-        if (diff == 0) {
+        if (diff === 0) {
           left[d] = leftSize | 1
           node[d] = node[d] & ~3 | 1
         } else {
@@ -311,10 +311,10 @@ export default function constructorFactory() {
   //        |x? |x?                      
         let right = left[r]
         let diff = right[d] & 3
-        if (diff == 2) {
+        if (diff === 2) {
           node[d] = node[d] & ~3 | 1
           left[d] = leftSize
-        } else if (diff == 0) {
+        } else if (diff === 0) {
           node[d] = node[d] & ~3 | 2
           left[d] = leftSize | 1
         } else {
@@ -508,7 +508,7 @@ export default function constructorFactory() {
           node = node[l]
           continue
         } 
-        if (start == -1 && cmp == 0) {
+        if (start === -1 && cmp === 0) {
           start = end + (node[d] >>> 2)
           let offset = end
           let node2 = node[l]
@@ -525,7 +525,7 @@ export default function constructorFactory() {
         end += (node[d] >>> 2) + 1
         node = node[r]
       }
-      if (start == -1) start = end
+      if (start === -1) start = end
       return { start, end }
     } 
     enumerate(comparer, reversed = false) {
