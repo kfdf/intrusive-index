@@ -345,7 +345,7 @@ export default function constructorFactory() {
       }
     }
   }  
-  function enumerateRange(node, start, end, reversed) {
+  function enumerate(node, start, end, reversed) {
     let count = end - start
     if (count === 1) {
       return new MiniIndexGenerator(node, null)
@@ -375,6 +375,61 @@ export default function constructorFactory() {
         return new IndexGenerator(nodes, count, reversed)
       }
     }
+  }
+  function enumerateRange(root, start = 0, end = ~0, reversed = false) {
+    let size = root[d] >>> 2
+    if (end < 0) end = size + end + 1
+    start = Math.max(0, start)
+    end = Math.min(size, end)
+    if (start >= end) {
+      return new MiniIndexGenerator(null, null)
+    } 
+    let node = root[l]
+    while (true) {
+      let index = node[d] >>> 2
+      if (end <= index) {
+        node = node[l]
+      } else if (index < start) {
+        node = node[r]
+        start -= index + 1
+        end -= index + 1
+      } else {
+        return enumerate(node, start, end, reversed)
+      }
+    }
+  }
+  function enumerateWhere(root, comp, reversed = false) {
+    let curr = root[l]
+    while (curr) {
+      let cmp = comp(curr)
+      if (cmp < 0) curr = curr[r]
+      else if (cmp > 0) curr = curr[l]
+      else break
+    }
+    if (!curr) return new MiniIndexGenerator(null, null)
+    let start = curr[d] >>> 2
+    let end = start + 1
+    let offset = 0
+    let node = curr[l]
+    while (node) {
+      if (comp(node) >= 0) {
+        start = offset + (node[d] >>> 2)
+        node = node[l]
+      } else {
+        offset += (node[d] >>> 2) + 1
+        node = node[r]
+      }
+    }
+    node = curr[r]
+    while (node) {
+      if (comp(node) > 0) {
+        node = node[l]
+      } else {
+        end += (node[d] >>> 2) + 1
+        node = node[r]
+      }
+    }    
+    return enumerate(curr, start, end, reversed)
   }
   class IndexGenerator {
     constructor(nodes, count, reversed) {
@@ -528,60 +583,12 @@ export default function constructorFactory() {
       if (start === -1) start = end
       return { start, end }
     } 
-    enumerate(comp, reversed = false) {
+    enumerate(a, b, c) {
       let { root } = this
-      let curr = root[l]
-      while (curr) {
-        let cmp = comp(curr)
-        if (cmp < 0) curr = curr[r]
-        else if (cmp > 0) curr = curr[l]
-        else break
-      }
-      if (!curr) return new MiniIndexGenerator(null, null)
-      let start = curr[d] >>> 2
-      let end = start + 1
-      let offset = 0
-      let node = curr[l]
-      while (node) {
-        if (comp(node) >= 0) {
-          start = offset + (node[d] >>> 2)
-          node = node[l]
-        } else {
-          offset += (node[d] >>> 2) + 1
-          node = node[r]
-        }
-      }
-      node = curr[r]
-      while (node) {
-        if (comp(node) > 0) {
-          node = node[l]
-        } else {
-          end += (node[d] >>> 2) + 1
-          node = node[r]
-        }
-      }    
-      return enumerateRange(curr, start, end, reversed)
-    }
-    enumerateRange(start = 0, end = ~0, reversed = false) {
-      let { size, root } = this
-      if (end < 0) end = size + end + 1
-      start = Math.max(0, start)
-      end = Math.min(size, end)
-      if (start >= end) {
-        return new MiniIndexGenerator(null, null)
-      } 
-      let node = root[l]
-      while (true) {
-        let index = node[d] >>> 2
-        if (end <= index) {
-          node = node[l]
-        } else if (index < start) {
-          node = node[r]
-          start -= index + 1
-          end -= index + 1
-        } else {
-          return enumerateRange(node, start, end, reversed)
-        }
+      if (typeof a === 'function') {
+        return enumerateWhere(root, a, b)
+      } else {
+        return enumerateRange(root, a, b, c)
       }
     }
     static get l() {
@@ -605,38 +612,44 @@ export const IIF = constructorFactory()
 
 export class Transaction {
   constructor() {
-    this.indexList = []
-    this.removedList = []
-    this.insertedList = []
+    this.journal = {
+      indexes: [],
+      removals: [],
+      inserts: [],
+    }
   }
   add(index, item) {
     if (!index.add(item)) return false
-    this.indexList.push(index)
-    this.removedList.push(null)
-    this.insertedList.push(item)
+    let { indexes, removals, inserts } = this.journal
+    indexes.push(index)
+    removals.push(null)
+    inserts.push(item)
     return true
   }  
   insert(index, item) {
     let removed = index.insert(item)
-    this.indexList.push(index)
-    this.removedList.push(removed)
-    this.insertedList.push(item)
+    let { indexes, removals, inserts } = this.journal
+    indexes.push(index)
+    removals.push(removed)
+    inserts.push(item)    
     return removed
   }
   delete(index, item) {
     let removed = index.delete(item)
     if (!removed) return null
-    this.indexList.push(index)
-    this.removedList.push(removed)
-    this.insertedList.push(null)
+    let { indexes, removals, inserts } = this.journal
+    indexes.push(index)
+    removals.push(removed)
+    inserts.push(null)        
     return removed
   }
   deleteAt(index, pos) {
     let removed = index.deleteAt(pos)
     if (!removed) return null
-    this.indexList.push(index)
-    this.removedList.push(removed)
-    this.insertedList.push(null)
+    let { indexes, removals, inserts } = this.journal
+    indexes.push(index)
+    removals.push(removed)
+    inserts.push(null)      
     return removed
   }  
   replace(index, item, replacee) {
@@ -645,11 +658,11 @@ export class Transaction {
     return removed !== replacee
   }  
   rollback() {
-    let { indexList, removedList, insertedList } = this
+    let { indexes, removals, inserts } = this.journal
     while (indexList.length) {
-      let index = indexList.pop()
-      let removed = removedList.pop()
-      let inserted = insertedList.pop()
+      let index = indexes.pop()
+      let removed = removals.pop()
+      let inserted = inserts.pop()
       let current
       if (inserted && removed) {
         current = index.insert(removed)

@@ -157,7 +157,7 @@ function testQueries(index, set) {
     assert(start == min(max(0, i1), ref.length))
     assert(end == min(max(0, i2), ref.length))
 
-    let rator = index.enumerateRange(start, end, reversed)
+    let rator = index.enumerate(start, end, reversed)
     let rator2 = index.enumerate(comp, reversed)
     for (let { value } of rator2) {
       assert(rator.moveNext())

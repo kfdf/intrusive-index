@@ -8,7 +8,7 @@ for (let i = 0; i < 10; i++) {
     ii.add({ ['foo' + i]: j, value: j })
   }
   for (let i = 0; i < ii.size; i++) {
-    let rator = ii.enumerateRange(i, i + 1)
+    let rator = ii.enumerate(i, i + 1)
     while (rator.moveNext()) {
       sum += rator.current.value
     }    
@@ -29,7 +29,7 @@ function enumerateInChunks(ii, chunkSize) {
   console.log('enumerating in', chunkSize, 'sized chunks...')
   let start = Date.now()
   for (let i = 0, len = ii.size; i < len; i += chunkSize) {
-    let rator = ii.enumerateRange(i, i + chunkSize)
+    let rator = ii.enumerate(i, i + chunkSize)
     while (rator.moveNext()) {
       sum += rator.current.value
     }      
