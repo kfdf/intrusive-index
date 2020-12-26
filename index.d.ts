@@ -16,12 +16,13 @@ export interface IntrusiveIndex<T extends U, U = T> {
   insert(value: T): T | null
   delete(key: U): T | null
   deleteAt(pos: number): T | null
-  get(value: U): T | null
+  get(key: U): T | null
   get(predicate: Predicate<U>): T | null
   getAt(pos: number): T | null
   findRange(predicate: Predicate<U>): { start: number, end: number}
   enumerate(predicate: Predicate<U>, reversed?: boolean): IndexGenerator<T>
   enumerate(start?: number, end?: number, reversed?: boolean): IndexGenerator<T>
+  enumerate(start?: number, reversed?: boolean): IndexGenerator<T>
 }
 interface IndexConstructor {          
   new <T extends U, U = T>(comparator: Comparator<U>): IntrusiveIndex<T, U>

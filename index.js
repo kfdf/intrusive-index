@@ -346,7 +346,8 @@ export default function constructorFactory() {
     }
   }  
   function enumerate(node, start, end, reversed) {
-    let count = end - start
+  // assert(start < end)
+  let count = end - start
     if (count === 1) {
       return new MiniIndexGenerator(node, null)
     }
@@ -376,29 +377,23 @@ export default function constructorFactory() {
       }
     }
   }
-  function enumerateRange(root, start = 0, end = ~0, reversed = false) {
-    let size = root[d] >>> 2
-    if (end < 0) end = size + end + 1
-    start = Math.max(0, start)
-    end = Math.min(size, end)
-    if (start >= end) {
-      return new MiniIndexGenerator(null, null)
-    } 
-    let node = root[l]
+  function enumerateRange(root, start, end, reversed) {
+    // assert(start < end)
+    let curr = root[l]
     while (true) {
-      let index = node[d] >>> 2
+      let index = curr[d] >>> 2
       if (end <= index) {
-        node = node[l]
+        curr = curr[l]
       } else if (index < start) {
-        node = node[r]
+        curr = curr[r]
         start -= index + 1
         end -= index + 1
       } else {
-        return enumerate(node, start, end, reversed)
+        return enumerate(curr, start, end, reversed)
       }
     }
   }
-  function enumerateWhere(root, comp, reversed = false) {
+  function enumerateWhere(root, comp, reversed) {
     let curr = root[l]
     while (curr) {
       let cmp = comp(curr)
@@ -548,7 +543,7 @@ export default function constructorFactory() {
     }  
     getAt(index) {
       let { root, size } = this
-      if (index < 0) index = size + index + 1
+      if (index < 0) index = size + index
       if (index < size) return getAt(root[l], index)
       return null
     }
@@ -587,9 +582,23 @@ export default function constructorFactory() {
       let { root } = this
       if (typeof a === 'function') {
         return enumerateWhere(root, a, b)
+      }
+      let size = root[d] >>> 2
+      if (typeof a === 'number') {
+        a = a > 0 ? a : 0
       } else {
+        a = 0
+      }
+      if (typeof b === 'number') {
+        b = b < 0 ? size + b : b < size ? b : size
+      } else {
+        c = b
+        b = size
+      }
+      if (a < b) {
         return enumerateRange(root, a, b, c)
       }
+      return new MiniIndexGenerator(null, null)
     }
     static get l() {
       return l

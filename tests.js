@@ -138,7 +138,7 @@ function testQueries(index, set) {
   for (let i = -2; i <= ref.length; i++) {
     let node = index.getAt(i)
     let value = node ? node.value : null
-    let refidx = i < 0 ? ref.length + i + 1 : i
+    let refidx = i < 0 ? ref.length + i : i
     assert(ref[refidx] == value)
   }
 
