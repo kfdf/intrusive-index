@@ -346,18 +346,18 @@ export default function constructorFactory() {
     }
   }  
   function enumerate(node, start, end, reversed) {
-  // assert(start < end)
-  let count = end - start
+    // assert(start < end)
+    let count = end - start
     if (count === 1) {
-      return new MiniIndexGenerator(node, null)
+      return new MiniGenerator(node, null)
     }
     if (count === 2) {
       let ascending = start === node[d] >>> 2
       let node2 = getAt(node, start + +ascending)
       if (ascending === reversed) {
-        return new MiniIndexGenerator(node2, node)
+        return new MiniGenerator(node2, node)
       } else {
-        return new MiniIndexGenerator(node, node2)
+        return new MiniGenerator(node, node2)
       }
     }
     let nodes = []
@@ -373,7 +373,7 @@ export default function constructorFactory() {
         node = node[r]
       } else {
         nodes.push(node)
-        return new IndexGenerator(nodes, count, reversed)
+        return new WalkerGenerator(nodes, count, reversed)
       }
     }
   }
@@ -401,7 +401,7 @@ export default function constructorFactory() {
       else if (cmp > 0) curr = curr[l]
       else break
     }
-    if (!curr) return new MiniIndexGenerator(null, null)
+    if (!curr) return new MiniGenerator(null, null)
     let start = curr[d] >>> 2
     let end = start + 1
     let offset = 0
@@ -426,9 +426,9 @@ export default function constructorFactory() {
     }    
     return enumerate(curr, start, end, reversed)
   }
-  class IndexGenerator {
+  class WalkerGenerator extends IndexGenerator {
     constructor(nodes, count, reversed) {
-      this.current = null
+      super()
       this.nodes = nodes
       this.count = count
       this.reversed = reversed
@@ -458,18 +458,10 @@ export default function constructorFactory() {
       this.current = nodes.pop()
       return true
     }  
-    next() {
-      let done = !this.moveNext()
-      let value = this.current
-      return { done, value }
-    }
-    [Symbol.iterator]() {
-      return this
-    }
   }
-  class MiniIndexGenerator {
+  class MiniGenerator extends IndexGenerator {
     constructor(item, item2) {
-      this.current = null
+      super()
       this.item = item
       this.item2 = item2
     }
@@ -480,14 +472,6 @@ export default function constructorFactory() {
       this.item2 = null
       return !!top
     }   
-    next() {
-      let done = !this.moveNext()
-      let value = this.current
-      return { done, value }
-    } 
-    [Symbol.iterator]() {
-      return this
-    }
   }  
   return class IntrusiveIndex {
     constructor(comp) {
@@ -598,7 +582,7 @@ export default function constructorFactory() {
       if (a < b) {
         return enumerateRange(root, a, b, c)
       }
-      return new MiniIndexGenerator(null, null)
+      return new MiniGenerator(null, null)
     }
     static get l() {
       return l
@@ -611,6 +595,182 @@ export default function constructorFactory() {
     }
   }
 }
+class IndexGenerator {
+  constructor() {
+    this.current = null
+  }
+  moveNext() {
+    return false
+  }
+  next() {
+    let done = !this.moveNext()
+    let value = this.current
+    return { done, value }
+  }
+  [Symbol.iterator]() {
+    return this
+  }
+  map(transform) {
+    return new MapGenerator(this, transform)
+  }
+  filter(predicate) {
+    return new FilterGenerator(this, predicate)
+  }
+  flatten(transform) {
+    return new FlattenGenerator(this, transform)
+  }
+  skipTake(skip, take) {
+    return new RangeGenerator(this, skip, take)
+  }
+  orDefault(value) {
+    return new DefaultGenerator(this, value)
+  }
+  wrap(func) {
+    return func(this)
+  }
+  reduce(callback, value) {
+    let index = 0
+    if (value === undefined) {
+      this.moveNext()
+      value = this.current
+      index++
+    }
+    while (this.moveNext()) {
+      value = callback(value, this.current, index++)
+    }
+    return value
+  }
+  toArray() {
+    let ret = []
+    while (this.moveNext()) {
+      ret.push(this.current)
+    }
+    return ret
+  }
+}
+export class Rator extends IndexGenerator {
+  constructor(iterable) {
+    super()
+    this.iterator = iterable[Symbol.iterator]()
+  }
+  moveNext() {
+    let { done, value } = this.iterator.next()
+    this.current = done ? null : value
+    return !done
+  }
+}
+
+class GeneratorWrapper extends IndexGenerator {
+  constructor(rator) {
+    super()
+    this.rator = rator
+  }
+  moveNext() {
+    let { rator } = this
+    let ret = rator.moveNext()
+    this.current = rator.current
+    return ret
+  }
+}
+class MapGenerator extends GeneratorWrapper {
+  constructor(rator, transform) {
+    super(rator)
+    this.transform = transform
+  }
+  moveNext() {
+    let { rator, transform } = this
+    let ret = rator.moveNext()
+    this.current = ret ? transform(rator.current) : null
+    return ret
+  }
+}
+class FilterGenerator extends GeneratorWrapper {
+  constructor(rator, predicate) {
+    super(rator)
+    this.predicate = predicate
+  }
+  moveNext() {
+    let { rator, predicate } = this
+    while (rator.moveNext()) {
+      let { current } = rator
+      if (!predicate(current)) continue
+      this.current = current
+      return true
+    }
+    this.current = null
+    return false
+  }
+}
+class FlattenGenerator extends GeneratorWrapper {
+  constructor(rator, transform) {
+    super(rator)
+    this.transform = transform
+    this.inner = null
+  }
+  moveNext() {
+    while (true) {
+      let { inner } = this
+      if (inner) {
+        if (inner.moveNext()) {
+          this.current = inner.current
+          return true
+        } else {
+          this.inner = null
+        }
+      }
+      let { rator, transform } = this
+      if (rator.moveNext()) {
+        let iterable = transform(rator.current)
+        if (iterable.moveNext) { // instanceof IndexGenerator) {
+          this.inner = iterable
+        } else {  
+          this.inner = new Rator(iterable)
+        }
+      } else {
+        this.current = null
+        return false
+      }
+    }
+  }
+}
+class RangeGenerator extends GeneratorWrapper {
+  constructor(rator, start, length = -1) {
+    super(rator)
+    this.start = Math.max(0, start)
+    this.length = length
+  }  
+  moveNext() {
+    let { rator } = this
+    while (this.start && rator.moveNext()) {
+      this.start--
+    }
+    if (this.length) {
+      this.length--
+      let ret = rator.moveNext()
+      this.current = rator.current
+      return ret
+    } 
+    this.current = null
+    return false
+  }
+}
+class DefaultGenerator extends GeneratorWrapper {
+  constructor(rator, value) {
+    super(rator)
+    this.value = value
+  }
+  moveNext() {
+    let { rator, value } = this
+    if (value === undefined) {
+      let ret = rator.moveNext()
+      this.current = rator.current
+      return ret
+    }
+    this.value = undefined
+    this.current = rator.moveNext() ? rator.current : value
+    return true
+  }
+}
 
 export const IIA = constructorFactory()
 export const IIB = constructorFactory()
@@ -618,6 +778,7 @@ export const IIC = constructorFactory()
 export const IID = constructorFactory()
 export const IIE = constructorFactory()
 export const IIF = constructorFactory()
+
 
 export class Transaction {
   constructor() {

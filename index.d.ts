@@ -1,7 +1,21 @@
-interface IndexGenerator<T> extends Generator<T> {
+interface IndexGenerator<T> implements Iterator<T>, Iterable<T> {
   moveNext: () => boolean
   current: T | null
+  map<U>(transform: (value: T) => U): IndexGenerator<U>
+  filter(predicate: (value: T) => boolean): IndexGenerator<T>
+  flatten(transform: (value: T) => IndexGenerator<T>): IndexGenerator<T>
+  flatten(transform: (value: T) => Iterable<T>): IndexGenerator<T>
+  skipTake(skip: number, take?: number): IndexGenerator<T>
+  wrap<T extends Function>(func: T): ReturnType<T>
+  toArray(): T[]
+  reduce<U>(operation: (accum: U, value: T, idx: number) => U, initial?: U): U
+  next(): IteratorResult<number, undefined>
+  [Symbol.iterator](): IndexGenerator<T>
 }
+export const Rator: {
+  new<T>(iterable: Iterable<T>): IndexGenerator<T>
+}
+
 interface Comparator<T> {
   (a: T, b: T): number
 }

@@ -186,6 +186,7 @@ function testQueries(index, set) {
   }
 
 }
+
 let values = generateValues(10000, 100)
 // let values = [-4, 6, 4, 2, 9, -1, -5, -7, 3, 1, 5, 2, 5, 9]
 let { index, set } = testValues(values)
