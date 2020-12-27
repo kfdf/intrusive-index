@@ -652,29 +652,26 @@ export class Rator extends IndexGenerator {
   constructor(iterable) {
     super()
     this.iterator = iterable[Symbol.iterator]()
+    this.done = false
   }
   moveNext() {
+    if (this.done) return false // extra safe
     let { done, value } = this.iterator.next()
-    this.current = done ? null : value
-    return !done
+    if (done) {
+      this.current = null
+      this.done = true
+      return false
+    } else {
+      this.current = value
+      return true
+    }
   }
 }
 
-class GeneratorWrapper extends IndexGenerator {
-  constructor(rator) {
+class MapGenerator extends IndexGenerator {
+  constructor(rator, transform) {
     super()
     this.rator = rator
-  }
-  moveNext() {
-    let { rator } = this
-    let ret = rator.moveNext()
-    this.current = rator.current
-    return ret
-  }
-}
-class MapGenerator extends GeneratorWrapper {
-  constructor(rator, transform) {
-    super(rator)
     this.transform = transform
   }
   moveNext() {
@@ -684,9 +681,10 @@ class MapGenerator extends GeneratorWrapper {
     return ret
   }
 }
-class FilterGenerator extends GeneratorWrapper {
+class FilterGenerator extends IndexGenerator {
   constructor(rator, predicate) {
-    super(rator)
+    super()
+    this.rator = rator
     this.predicate = predicate
   }
   moveNext() {
@@ -701,9 +699,10 @@ class FilterGenerator extends GeneratorWrapper {
     return false
   }
 }
-class FlattenGenerator extends GeneratorWrapper {
+class FlattenGenerator extends IndexGenerator {
   constructor(rator, transform) {
-    super(rator)
+    super()
+    this.rator = rator
     this.transform = transform
     this.inner = null
   }
@@ -733,9 +732,10 @@ class FlattenGenerator extends GeneratorWrapper {
     }
   }
 }
-class RangeGenerator extends GeneratorWrapper {
+class RangeGenerator extends IndexGenerator {
   constructor(rator, start, length = -1) {
-    super(rator)
+    super()
+    this.rator = rator
     this.start = Math.max(0, start)
     this.length = length
   }  
@@ -754,9 +754,10 @@ class RangeGenerator extends GeneratorWrapper {
     return false
   }
 }
-class DefaultGenerator extends GeneratorWrapper {
+class DefaultGenerator extends IndexGenerator {
   constructor(rator, value) {
-    super(rator)
+    super()
+    this.rator = rator
     this.value = value
   }
   moveNext() {

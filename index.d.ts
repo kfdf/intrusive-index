@@ -1,4 +1,4 @@
-interface IndexGenerator<T> implements Iterator<T>, Iterable<T> {
+class IndexGenerator<T> {
   moveNext: () => boolean
   current: T | null
   map<U>(transform: (value: T) => U): IndexGenerator<U>
@@ -12,18 +12,11 @@ interface IndexGenerator<T> implements Iterator<T>, Iterable<T> {
   next(): IteratorResult<number, undefined>
   [Symbol.iterator](): IndexGenerator<T>
 }
-export const Rator: {
-  new<T>(iterable: Iterable<T>): IndexGenerator<T>
-}
-
-interface Comparator<T> {
-  (a: T, b: T): number
-}
-interface Predicate<T> {
-  (a: T): number
+export class Rator<T> extends IndexGenerator<T> {
+  constructor(iterable: Iterable<T>)
 }
 export interface IntrusiveIndex<T extends U, U = T> {
-  readonly comp: Comparator<U>
+  readonly comp: (a: U, b: U) => number
   readonly size: number
   clear(): void
   add(value: T): boolean
@@ -31,15 +24,15 @@ export interface IntrusiveIndex<T extends U, U = T> {
   delete(key: U): T | null
   deleteAt(pos: number): T | null
   get(key: U): T | null
-  get(predicate: Predicate<U>): T | null
+  get(predicate: (a: U) => number): T | null
   getAt(pos: number): T | null
-  findRange(predicate: Predicate<U>): { start: number, end: number}
-  enumerate(predicate: Predicate<U>, reversed?: boolean): IndexGenerator<T>
+  findRange(predicate: (a: U) => number): { start: number, end: number}
+  enumerate(predicate: (a: U) => number, reversed?: boolean): IndexGenerator<T>
   enumerate(start?: number, end?: number, reversed?: boolean): IndexGenerator<T>
   enumerate(start?: number, reversed?: boolean): IndexGenerator<T>
 }
-interface IndexConstructor {          
-  new <T extends U, U = T>(comparator: Comparator<U>): IntrusiveIndex<T, U>
+export interface IndexConstructor {          
+  new <T extends U, U = T>(comparator: (a: U, b: U) => number): IntrusiveIndex<T, U>
   l: symbol
   r: symbol
   d: symbol
@@ -52,13 +45,12 @@ export const IID: IndexConstructor
 export const IIE: IndexConstructor
 export const IIF: IndexConstructor
 
-interface Journal {
-  indexes: IntrusiveIndex<any>[]
-  removals: any[]
-  inserts: any[]
-}
 export class Transaction {
-  readonly journal: Journal
+  readonly journal: {
+    indexes: IntrusiveIndex<any>[]
+    removals: any[]
+    inserts: any[]
+  }
   add<T>(index: IntrusiveIndex<T, any>, value: T): boolean
   insert<T>(index: IntrusiveIndex<T, any>, value: T): T | null
   delete<T extends U, U>(index: IntrusiveIndex<T, U>, key: U): T | null
@@ -66,3 +58,4 @@ export class Transaction {
   replace<T>(index: IntrusiveIndex<T, any>, value: T, replacee: T): boolean
   rollback(): void
 }
+export {}
