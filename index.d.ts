@@ -1,15 +1,17 @@
-class IndexGenerator<T> {
+class IndexGenerator<T> implements Iterable<T> {
   moveNext: () => boolean
   current: T | null
   map<U>(transform: (value: T) => U): IndexGenerator<U>
   filter(predicate: (value: T) => boolean): IndexGenerator<T>
-  flatten(transform: (value: T) => IndexGenerator<T>): IndexGenerator<T>
-  flatten(transform: (value: T) => Iterable<T>): IndexGenerator<T>
+  flatten(): IndexGenerator<T extends Iterable<infer U> ? U : T>
   skipTake(skip: number, take?: number): IndexGenerator<T>
-  wrap<T extends Function>(func: T): ReturnType<T>
+  fallback<U>(value: U) : IndexGenerator<T> | IndexGenerator<U>
+  into<U>(func: (generator: IndexGenerator<T>) => U) : U
   toArray(): T[]
-  reduce<U>(operation: (accum: U, value: T, idx: number) => U, initial?: U): U
-  next(): IteratorResult<number, undefined>
+  forEach(callback: (value: T) => void): void
+  reduce<U>(operation: (accum: U, value: T) => U, initial: U): U
+  reduce(operation: (accum: T, value: T) => T): T
+  next(): IteratorResult<T, undefined>
   [Symbol.iterator](): IndexGenerator<T>
 }
 export class Rator<T> extends IndexGenerator<T> {
@@ -28,8 +30,9 @@ export interface IntrusiveIndex<T extends U, U = T> {
   getAt(pos: number): T | null
   findRange(predicate: (a: U) => number): { start: number, end: number}
   enumerate(predicate: (a: U) => number, reversed?: boolean): IndexGenerator<T>
-  enumerate(start?: number, end?: number, reversed?: boolean): IndexGenerator<T>
-  enumerate(start?: number, reversed?: boolean): IndexGenerator<T>
+  enumerate(start: number, end: number, reversed?: boolean): IndexGenerator<T>
+  enumerate(start: number, reversed?: boolean): IndexGenerator<T>
+  enumerate(reversed?: boolean): IndexGenerator<T>
 }
 export interface IndexConstructor {          
   new <T extends U, U = T>(comparator: (a: U, b: U) => number): IntrusiveIndex<T, U>

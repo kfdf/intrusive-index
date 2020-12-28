@@ -568,16 +568,18 @@ export default function constructorFactory() {
         return enumerateWhere(root, a, b)
       }
       let size = root[d] >>> 2
-      if (typeof a === 'number') {
-        a = a > 0 ? a : 0
-      } else {
-        a = 0
-      }
-      if (typeof b === 'number') {
-        b = b < 0 ? size + b : b < size ? b : size
-      } else {
-        c = b
+      if (typeof a !== 'number') {
+        c = a
         b = size
+        a = 0
+      } else {
+        a = a > 0 ? a : 0
+        if (typeof b !== 'number') {
+          c = b
+          b = size
+        } else {
+          b = b < 0 ? size + b : b < size ? b : size
+        }
       }
       if (a < b) {
         return enumerateRange(root, a, b, c)
@@ -616,29 +618,32 @@ class IndexGenerator {
   filter(predicate) {
     return new FilterGenerator(this, predicate)
   }
-  flatten(transform) {
-    return new FlattenGenerator(this, transform)
+  flatten() {
+    return new FlattenGenerator(this)
   }
   skipTake(skip, take) {
     return new RangeGenerator(this, skip, take)
   }
-  orDefault(value) {
-    return new DefaultGenerator(this, value)
+  fallback(value) {
+    return new FallbackGenerator(this, value)
   }
-  wrap(func) {
+  into(func) {
     return func(this)
   }
   reduce(callback, value) {
-    let index = 0
     if (value === undefined) {
       this.moveNext()
       value = this.current
-      index++
     }
     while (this.moveNext()) {
-      value = callback(value, this.current, index++)
+      value = callback(value, this.current)
     }
     return value
+  }
+  forEach(callback) {
+    while (this.moveNext()) {
+      callback(this.current)
+    }
   }
   toArray() {
     let ret = []
@@ -700,10 +705,9 @@ class FilterGenerator extends IndexGenerator {
   }
 }
 class FlattenGenerator extends IndexGenerator {
-  constructor(rator, transform) {
+  constructor(rator) {
     super()
     this.rator = rator
-    this.transform = transform
     this.inner = null
   }
   moveNext() {
@@ -717,13 +721,18 @@ class FlattenGenerator extends IndexGenerator {
           this.inner = null
         }
       }
-      let { rator, transform } = this
+      let { rator } = this
       if (rator.moveNext()) {
-        let iterable = transform(rator.current)
-        if (iterable.moveNext) { // instanceof IndexGenerator) {
-          this.inner = iterable
-        } else {  
-          this.inner = new Rator(iterable)
+        let { current } = rator
+        if (Symbol.iterator in current) {
+          if (current.moveNext) { 
+            this.inner = current
+          } else {  
+            this.inner = new Rator(current)
+          }
+        } else {
+          this.current = current
+          return true
         }
       } else {
         this.current = null
@@ -754,7 +763,7 @@ class RangeGenerator extends IndexGenerator {
     return false
   }
 }
-class DefaultGenerator extends IndexGenerator {
+class FallbackGenerator extends IndexGenerator {
   constructor(rator, value) {
     super()
     this.rator = rator
