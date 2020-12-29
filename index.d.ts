@@ -17,6 +17,14 @@ class IndexGenerator<T> implements Iterable<T> {
 export class Rator<T> extends IndexGenerator<T> {
   constructor(iterable: Iterable<T>)
 }
+export interface Range<T> {
+  start: number
+  end: number
+  beforeStart: T | null
+  afterStart: T | null
+  beforeEnd: T | null
+  afterEnd: T | null
+}
 export interface IntrusiveIndex<T extends U, U = T> {
   readonly comp: (a: U, b: U) => number
   readonly size: number
@@ -28,7 +36,7 @@ export interface IntrusiveIndex<T extends U, U = T> {
   get(key: U): T | null
   get(predicate: (a: U) => number): T | null
   getAt(pos: number): T | null
-  findRange(predicate: (a: U) => number): { start: number, end: number}
+  findRange(predicate: (a: U) => number): Range<T>
   enumerate(predicate: (a: U) => number, reversed?: boolean): IndexGenerator<T>
   enumerate(start: number, end: number, reversed?: boolean): IndexGenerator<T>
   enumerate(start: number, reversed?: boolean): IndexGenerator<T>
@@ -39,7 +47,7 @@ export interface IndexConstructor {
   l: symbol
   r: symbol
   d: symbol
-}
+}b
 export default function constructorFactory(): IndexConstructor
 export const IIA: IndexConstructor
 export const IIB: IndexConstructor

@@ -509,6 +509,7 @@ export default function constructorFactory() {
     }
     deleteAt(index) {
       let { root, size } = this
+      // if (index < 0) index = size + index
       if (index < 0 || index >= size) return null
       deleteLeftAt(root, index)
       return getDetached()
@@ -527,40 +528,57 @@ export default function constructorFactory() {
     }  
     getAt(index) {
       let { root, size } = this
-      if (index < 0) index = size + index
-      if (index < size) return getAt(root[l], index)
-      return null
+      // if (index < 0) index = size + index
+      if (index < 0 || index >= size) return null
+      return getAt(root[l], index)
     }
     findRange(comp) {
       let { root } = this
       let node = root[l]
       let end = 0
       let start = -1
+      let beforeStart = null
+      let afterStart = null
+      let beforeEnd = null
+      let afterEnd = null
       while (node) {
         let cmp = comp(node)
         if (cmp > 0) {
+          afterEnd = node
           node = node[l]
           continue
         } 
         if (start === -1 && cmp === 0) {
           start = end + (node[d] >>> 2)
           let offset = end
+          beforeStart = beforeEnd // !!
+          afterStart = node
           let node2 = node[l]
           while (node2) {
             if (comp(node2) < 0) {
               offset += (node2[d] >>> 2) + 1
+              beforeStart = node2
               node2 = node2[r]
             } else {
               start = offset + (node2[d] >>> 2)
+              afterStart = node2
               node2 = node2[l]
             }
           }
         }
         end += (node[d] >>> 2) + 1
+        beforeEnd = node
         node = node[r]
       }
-      if (start === -1) start = end
-      return { start, end }
+      if (start === -1) {
+        start = end
+        beforeStart = beforeEnd
+        afterStart = afterEnd
+      }
+      return { 
+        start, beforeStart, afterStart, 
+        end, beforeEnd, afterEnd 
+      }
     } 
     enumerate(a, b, c) {
       let { root } = this
@@ -578,7 +596,8 @@ export default function constructorFactory() {
           c = b
           b = size
         } else {
-          b = b < 0 ? size + b : b < size ? b : size
+          // b = b < 0 ? size + b : b < size ? b : size
+          b = b < size ? b : size
         }
       }
       if (a < b) {

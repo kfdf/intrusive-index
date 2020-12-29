@@ -135,13 +135,10 @@ function testQueries(index, set) {
     return
   }
   let ref = [...set].sort((a, b) => a - b)
-  for (let i = -2; i <= ref.length; i++) {
+  for (let i = -2; i < ref.length + 2; i++) {
     let node = index.getAt(i)
-    let value = node ? node.value : null
-    let refidx = i < 0 ? ref.length + i : i
-    assert(ref[refidx] == value)
+    assert(ref[i] == (node ? node.value : null))
   }
-
   function getValue(i) {
     if (i < 0) return ref[0] - 1
     if (i < ref.length) return ref[i]
@@ -153,7 +150,15 @@ function testQueries(index, set) {
     let v1 = getValue(i1)
     let v2 = getValue(i2)
     let comp = n => n.value < v1 ? -1 : n.value < v2 ? 0 : 1
-    let { start, end } = index.findRange(comp)
+    let { 
+      start, end, 
+      beforeStart, afterStart,
+      beforeEnd, afterEnd
+    } = index.findRange(comp) 
+    assert(beforeStart === index.getAt(start - 1))
+    assert(afterStart === index.getAt(start))
+    assert(beforeEnd === index.getAt(end - 1))
+    assert(afterEnd === index.getAt(end))
     assert(start == min(max(0, i1), ref.length))
     assert(end == min(max(0, i2), ref.length))
 
