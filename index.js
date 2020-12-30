@@ -111,15 +111,15 @@ export default function constructorFactory() {
   }  
   /** 
   @returns {1|2|3} */
-  function deleteLeftAt(curr, index) {
+  function deleteLeftAt(curr, pos) {
     let left = curr[l]
     let size = left[d] >>> 2
     /** @type {1|2|3} */
     let result
-    if (size > index) {
-      result = deleteLeftAt(left, index)
-    } else if (size < index) {
-      result = deleteRightAt(left, index - size - 1)
+    if (size > pos) {
+      result = deleteLeftAt(left, pos)
+    } else if (size < pos) {
+      result = deleteRightAt(left, pos - size - 1)
     } else if (left[l] && left[r]) {
       result = deleteLeftAt(left, size - 1)
       curr[l] = left = detachNode(left, detachedNode)
@@ -145,15 +145,15 @@ export default function constructorFactory() {
   }  
   /** 
   @returns {1|2|3} */
-  function deleteRightAt(curr, index) {
+  function deleteRightAt(curr, pos) {
     let right = curr[r]
     let size = right[d] >>> 2
     /** @type {1|2|3} */
     let result
-    if (size > index) {
-      result = deleteLeftAt(right, index)
-    } else if (size < index) {
-      result = deleteRightAt(right, index - size - 1)
+    if (size > pos) {
+      result = deleteLeftAt(right, pos)
+    } else if (size < pos) {
+      result = deleteRightAt(right, pos - size - 1)
     } else if (right[l] && right[r]) {
       result = deleteLeftAt(right, size - 1)
       curr[r] = right = detachNode(right, detachedNode)
@@ -167,15 +167,15 @@ export default function constructorFactory() {
   }  
   /** 
   @returns {1|2|3} */
-  function deleteRightAt(curr, index) {
+  function deleteRightAt(curr, pos) {
     let right = curr[r]
     let size = right[d] >>> 2
     /** @type {1|2|3} */
     let result
-    if (size > index) {
-      result = deleteLeftAt(right, index)
-    } else if (size < index) {
-      result = deleteRightAt(right, index - size - 1)
+    if (size > pos) {
+      result = deleteLeftAt(right, pos)
+    } else if (size < pos) {
+      result = deleteRightAt(right, pos - size - 1)
     } else if (right[l] && right[r]) {
       result = deleteLeftAt(right, size - 1)
       curr[r] = right = detachNode(right, detachedNode)
@@ -332,101 +332,80 @@ export default function constructorFactory() {
       }
     }
   }
-  function getAt(node, index) {
-    while (true) {
-      let size = node[d] >>> 2
-      if (index < size) {
-        node = node[l]
-      } else if (index > size) {
-        index -= size + 1
-        node = node[r]
-      } else {
-        return node
-      }
-    }
-  }  
-  function enumerate(node, start, end, reversed) {
-    // assert(start < end)
+
+  function enumerateRange(root, start, end, reversed) {
     let count = end - start
-    if (count === 1) {
-      return new MiniGenerator(node, null)
+    if (count <= 0) {
+      return new WalkerIterator(null, 0)
     }
-    if (count === 2) {
-      let ascending = start === node[d] >>> 2
-      let node2 = getAt(node, start + +ascending)
-      if (ascending === reversed) {
-        return new MiniGenerator(node2, node)
-      } else {
-        return new MiniGenerator(node, node2)
-      }
+    let node = root[l]
+    while (true) {
+      let pos = node[d] >>> 2
+      if (end <= pos) {
+        node = node[l]
+      } else if (pos < start) {
+        node = node[r]
+        start -= pos + 1
+        end -= pos + 1
+      } else break
+    }
+    if (count === 1) {
+      return new WalkerIterator([node], 1)
     }
     let nodes = []
     if (reversed) start = end - 1
     while (true) {
-      let index = node[d] >>> 2
-      if (start < index) {
+      let pos = node[d] >>> 2
+      if (start < pos) {
         if (!reversed) nodes.push(node)
         node = node[l]
-      } else if (start > index) {
-        start -= index + 1
+      } else if (start > pos) {
+        start -= pos + 1
         if (reversed) nodes.push(node)
         node = node[r]
       } else {
         nodes.push(node)
-        return new WalkerGenerator(nodes, count, reversed)
+        break
       }
-    }
-  }
-  function enumerateRange(root, start, end, reversed) {
-    // assert(start < end)
-    let curr = root[l]
-    while (true) {
-      let index = curr[d] >>> 2
-      if (end <= index) {
-        curr = curr[l]
-      } else if (index < start) {
-        curr = curr[r]
-        start -= index + 1
-        end -= index + 1
-      } else {
-        return enumerate(curr, start, end, reversed)
-      }
-    }
+    }    
+    return new WalkerIterator(nodes, count, reversed)
   }
   function enumerateWhere(root, comp, reversed) {
-    let curr = root[l]
-    while (curr) {
-      let cmp = comp(curr)
-      if (cmp < 0) curr = curr[r]
-      else if (cmp > 0) curr = curr[l]
+    let top = root[l]
+    while (top) {
+      let cmp = comp(top)
+      if (cmp < 0) top = top[r]
+      else if (cmp > 0) top = top[l]
       else break
     }
-    if (!curr) return new MiniGenerator(null, null)
-    let start = curr[d] >>> 2
-    let end = start + 1
-    let offset = 0
-    let node = curr[l]
+    if (!top) {
+      return new WalkerIterator(null, 0)
+    }
+    let nodes = [top]
+    let count = (top[d] >>> 2) + 1
+    let node = top[l]
     while (node) {
       if (comp(node) >= 0) {
-        start = offset + (node[d] >>> 2)
+        if (!reversed) nodes.push(node)
         node = node[l]
       } else {
-        offset += (node[d] >>> 2) + 1
+        count -= (node[d] >>> 2) + 1
         node = node[r]
       }
     }
-    node = curr[r]
+    node = top[r]
     while (node) {
       if (comp(node) > 0) {
         node = node[l]
       } else {
-        end += (node[d] >>> 2) + 1
+        if (reversed) nodes.push(node)
+        count += (node[d] >>> 2) + 1
         node = node[r]
       }
     }    
-    return enumerate(curr, start, end, reversed)
+    return new WalkerIterator(nodes, count, reversed)
   }
-  class WalkerGenerator extends IndexGenerator {
+  class WalkerIterator extends IndexIterator {
     constructor(nodes, count, reversed) {
       super()
       this.nodes = nodes
@@ -449,7 +428,6 @@ export default function constructorFactory() {
         } else {
           current = current[r]
           while (current) {
-            // if (node[d] >>> 2 < this.count)
             nodes.push(current)
             current = current[l]
           }
@@ -459,23 +437,13 @@ export default function constructorFactory() {
       return true
     }  
   }
-  class MiniGenerator extends IndexGenerator {
-    constructor(item, item2) {
-      super()
-      this.item = item
-      this.item2 = item2
-    }
-    moveNext() {
-      let top = this.item
-      this.current = top
-      this.item = this.item2
-      this.item2 = null
-      return !!top
-    }   
-  }  
+ 
   return class IntrusiveIndex {
-    constructor(comp) {
+    constructor(comp, L, R, D) {
       this.comp = comp
+      this.L = L
+      this.R = R
+      this.D = D
       this.root = { [l]: null, [r]: null, [d]: 1 }
     }
     get size() {
@@ -507,11 +475,11 @@ export default function constructorFactory() {
       deleteLeft(root, value, comp)
       return getDetached()
     }
-    deleteAt(index) {
+    deleteAt(pos) {
       let { root, size } = this
-      // if (index < 0) index = size + index
-      if (index < 0 || index >= size) return null
-      deleteLeftAt(root, index)
+      // if (pos < 0) pos = size + pos
+      if (pos < 0 || pos >= size) return null
+      deleteLeftAt(root, pos)
       return getDetached()
     }
     get(value) {
@@ -526,13 +494,24 @@ export default function constructorFactory() {
       }
       return null
     }  
-    getAt(index) {
+    getAt(pos) {
       let { root, size } = this
-      // if (index < 0) index = size + index
-      if (index < 0 || index >= size) return null
-      return getAt(root[l], index)
+      // if (pos < 0) pos = size + pos
+      if (pos < 0 || pos >= size) return null
+      let node = root[l]
+      while (true) {
+        let size = node[d] >>> 2
+        if (pos < size) {
+          node = node[l]
+        } else if (pos > size) {
+          pos -= size + 1
+          node = node[r]
+        } else {
+          return node
+        }
+      }
     }
-    findRange(comp) {
+    findRange(comp, option) {
       let { root } = this
       let node = root[l]
       let end = 0
@@ -549,20 +528,35 @@ export default function constructorFactory() {
           continue
         } 
         if (start === -1 && cmp === 0) {
-          start = end + (node[d] >>> 2)
-          let offset = end
+          let nodePos = end + (node[d] >>> 2)
           beforeStart = beforeEnd // !!
+          if (option === 'any') {
+            return new Range(
+              nodePos, nodePos + 1, 
+              beforeStart, node, 
+              node, afterEnd)
+          }
+          start = nodePos
           afterStart = node
-          let node2 = node[l]
-          while (node2) {
-            if (comp(node2) < 0) {
-              offset += (node2[d] >>> 2) + 1
-              beforeStart = node2
-              node2 = node2[r]
-            } else {
-              start = offset + (node2[d] >>> 2)
-              afterStart = node2
-              node2 = node2[l]
+          if (option !== 'end') {
+            let offset = end
+            let node2 = node[l]
+            while (node2) {
+              if (comp(node2) < 0) {
+                offset += (node2[d] >>> 2) + 1
+                beforeStart = node2
+                node2 = node2[r]
+              } else {
+                start = offset + (node2[d] >>> 2)
+                afterStart = node2
+                node2 = node2[l]
+              }
+            }
+            if (option === 'start') {
+              return new Range(
+                start, nodePos + 1, 
+                beforeStart, afterStart, 
+                node, afterEnd)
             }
           }
         }
@@ -575,15 +569,16 @@ export default function constructorFactory() {
         beforeStart = beforeEnd
         afterStart = afterEnd
       }
-      return { 
-        start, beforeStart, afterStart, 
-        end, beforeEnd, afterEnd 
-      }
+      return new Range( 
+        start, end, 
+        beforeStart, afterStart, 
+        beforeEnd, afterEnd 
+      )
     } 
     enumerate(a, b, c) {
       let { root } = this
       if (typeof a === 'function') {
-        return enumerateWhere(root, a, b)
+        return enumerateWhere(root, a, b === 'desc')
       }
       let size = root[d] >>> 2
       if (typeof a !== 'number') {
@@ -600,10 +595,7 @@ export default function constructorFactory() {
           b = b < size ? b : size
         }
       }
-      if (a < b) {
-        return enumerateRange(root, a, b, c)
-      }
-      return new MiniGenerator(null, null)
+      return enumerateRange(root, a, b, c === 'desc')
     }
     static get l() {
       return l
@@ -616,7 +608,7 @@ export default function constructorFactory() {
     }
   }
 }
-class IndexGenerator {
+class IndexIterator {
   constructor() {
     this.current = null
   }
@@ -632,19 +624,19 @@ class IndexGenerator {
     return this
   }
   map(transform) {
-    return new MapGenerator(this, transform)
+    return new MapIterator(this, transform)
   }
   filter(predicate) {
-    return new FilterGenerator(this, predicate)
+    return new FileterIterator(this, predicate)
   }
   flatten() {
-    return new FlattenGenerator(this)
+    return new FlattenIterator(this)
   }
   skipTake(skip, take) {
-    return new RangeGenerator(this, skip, take)
+    return new RangeIterator(this, skip, take)
   }
   fallback(value) {
-    return new FallbackGenerator(this, value)
+    return new FallbackIterator(this, value)
   }
   into(func) {
     return func(this)
@@ -672,7 +664,26 @@ class IndexGenerator {
     return ret
   }
 }
-export class Rator extends IndexGenerator {
+class Range {
+  constructor(start, end, beforeStart, afterStart, beforeEnd, afterEnd) {
+    this.start = start
+    this.end = end
+    this.beforeStart = beforeStart
+    this.afterStart = afterStart
+    this.beforeEnd = beforeEnd
+    this.afterEnd = afterEnd
+  }
+  get size() {
+    return this.end - this.start
+  }
+  get first() {
+    return this.end > this.start ? this.afterStart : null
+  }
+  get last() {
+    return this.end > this.start ? this.beforeEnd : null
+  }
+}
+export class Rator extends IndexIterator {
   constructor(iterable) {
     super()
     this.iterator = iterable[Symbol.iterator]()
@@ -692,7 +703,7 @@ export class Rator extends IndexGenerator {
   }
 }
 
-class MapGenerator extends IndexGenerator {
+class MapIterator extends IndexIterator {
   constructor(rator, transform) {
     super()
     this.rator = rator
@@ -705,7 +716,7 @@ class MapGenerator extends IndexGenerator {
     return ret
   }
 }
-class FilterGenerator extends IndexGenerator {
+class FileterIterator extends IndexIterator {
   constructor(rator, predicate) {
     super()
     this.rator = rator
@@ -723,7 +734,7 @@ class FilterGenerator extends IndexGenerator {
     return false
   }
 }
-class FlattenGenerator extends IndexGenerator {
+class FlattenIterator extends IndexIterator {
   constructor(rator) {
     super()
     this.rator = rator
@@ -760,7 +771,7 @@ class FlattenGenerator extends IndexGenerator {
     }
   }
 }
-class RangeGenerator extends IndexGenerator {
+class RangeIterator extends IndexIterator {
   constructor(rator, start, length = -1) {
     super()
     this.rator = rator
@@ -782,7 +793,7 @@ class RangeGenerator extends IndexGenerator {
     return false
   }
 }
-class FallbackGenerator extends IndexGenerator {
+class FallbackIterator extends IndexIterator {
   constructor(rator, value) {
     super()
     this.rator = rator

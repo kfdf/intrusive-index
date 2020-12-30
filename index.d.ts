@@ -1,30 +1,35 @@
-class IndexGenerator<T> implements Iterable<T> {
+declare class IndexIterator<T> {
   moveNext: () => boolean
   current: T | null
-  map<U>(transform: (value: T) => U): IndexGenerator<U>
-  filter(predicate: (value: T) => boolean): IndexGenerator<T>
-  flatten(): IndexGenerator<T extends Iterable<infer U> ? U : T>
-  skipTake(skip: number, take?: number): IndexGenerator<T>
-  fallback<U>(value: U) : IndexGenerator<T> | IndexGenerator<U>
-  into<U>(func: (generator: IndexGenerator<T>) => U) : U
+  map<U>(transform: (value: T) => U): IndexIterator<U>
+  filter(predicate: (value: T) => boolean): IndexIterator<T>
+  flatten(): IndexIterator<T extends Iterable<infer U> ? U : T>
+  skipTake(skip: number, take?: number): IndexIterator<T>
+  fallback<U>(value: U) : IndexIterator<T> | IndexIterator<U>
+  into<U>(func: (generator: IndexIterator<T>) => U) : U
   toArray(): T[]
   forEach(callback: (value: T) => void): void
   reduce<U>(operation: (accum: U, value: T) => U, initial: U): U
   reduce(operation: (accum: T, value: T) => T): T
   next(): IteratorResult<T, undefined>
-  [Symbol.iterator](): IndexGenerator<T>
+  [Symbol.iterator](): IndexIterator<T>
 }
-export class Rator<T> extends IndexGenerator<T> {
+export class Rator<T> extends IndexIterator<T> {
   constructor(iterable: Iterable<T>)
 }
 export interface Range<T> {
-  start: number
-  end: number
-  beforeStart: T | null
-  afterStart: T | null
-  beforeEnd: T | null
-  afterEnd: T | null
+  readonly start: number
+  readonly end: number
+  readonly size: number
+  readonly first: T | null
+  readonly last: T | null
+  readonly beforeStart: T | null
+  readonly afterStart: T | null
+  readonly beforeEnd: T | null
+  readonly afterEnd: T | null
 }
+export type SubRange = 'full' | 'start' | 'end' | 'any'
+export type EnumerationOrder = 'asc' | 'desc'
 export interface IntrusiveIndex<T extends U, U = T> {
   readonly comp: (a: U, b: U) => number
   readonly size: number
@@ -36,18 +41,18 @@ export interface IntrusiveIndex<T extends U, U = T> {
   get(key: U): T | null
   get(predicate: (a: U) => number): T | null
   getAt(pos: number): T | null
-  findRange(predicate: (a: U) => number): Range<T>
-  enumerate(predicate: (a: U) => number, reversed?: boolean): IndexGenerator<T>
-  enumerate(start: number, end: number, reversed?: boolean): IndexGenerator<T>
-  enumerate(start: number, reversed?: boolean): IndexGenerator<T>
-  enumerate(reversed?: boolean): IndexGenerator<T>
+  findRange(predicate: (a: U) => number, subRange?: SubRange ): Range<T>
+  enumerate(predicate: (a: U) => number, order?: EnumerationOrder): IndexIterator<T>
+  enumerate(start: number, end: number, order?: EnumerationOrder): IndexIterator<T>
+  enumerate(start: number, order?: EnumerationOrder): IndexIterator<T>
+  enumerate(order?: EnumerationOrder): IndexIterator<T>
 }
 export interface IndexConstructor {          
   new <T extends U, U = T>(comparator: (a: U, b: U) => number): IntrusiveIndex<T, U>
   l: symbol
   r: symbol
   d: symbol
-}b
+}
 export default function constructorFactory(): IndexConstructor
 export const IIA: IndexConstructor
 export const IIB: IndexConstructor

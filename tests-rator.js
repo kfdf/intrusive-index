@@ -85,7 +85,6 @@ for (let emp of empPk.enumerate()) {
   empDepFk.add(emp)
   empManagerIx.add(emp)
 }
-
 let nullEmp = new Employee(0, 0, '<no employees>', 0)
 let rows = depPk
   .enumerate()
