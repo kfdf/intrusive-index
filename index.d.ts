@@ -16,18 +16,16 @@ export class IndexIterator<T> {
   static from<T>(iterable: Iterable<T>): IndexIterator<T>
 }
 
-export class Range<T> {
-  constructor(
-    public start: number,
-    public end: number,
-    public beforeStart: T | null,
-    public afterStart: T | null,
-    public beforeEnd: T | null,
-    public afterEnd: T | null
-  )
-  get size(): number
-  get first(): T | null
-  get last(): T | null
+export interface Range<T> {
+  start: number
+  end: number
+  beforeStart: T | null
+  afterStart: T | null
+  beforeEnd: T | null
+  afterEnd: T | null
+  readonly size: number
+  readonly first: T | null
+  readonly last: T | null
 }
 
 declare type SubRange = 'full' | 'start' | 'end' | 'any'
@@ -63,6 +61,7 @@ export const IID: IndexConstructor
 export const IIE: IndexConstructor
 export const IIF: IndexConstructor
 
+export function createFactory(): () => IndexConstructor
 export class Transaction {
   readonly journal: {
     indexes: IntrusiveIndex<any>[]

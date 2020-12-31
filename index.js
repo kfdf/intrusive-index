@@ -421,8 +421,7 @@ export default function constructorFactory() {
       return true
     }  
   }
- 
-  class IntrusiveIndex {
+  return class IntrusiveIndex {
     constructor(comp) {
       this.comp = comp
       this.root = { [l]: null, [r]: null, [d]: 1 }
@@ -512,10 +511,12 @@ export default function constructorFactory() {
           let nodePos = end + (node[d] >>> 2)
           beforeStart = beforeEnd // !!
           if (option === 'any') {
-            return new Range(
-              nodePos, nodePos + 1, 
-              beforeStart, node, 
-              node, afterEnd)
+            return {
+              __proto__: rangeProto,
+              start: nodePos, end: nodePos + 1, 
+              beforeStart, afterStart: node, 
+              beforeEnd: node, afterEnd
+            }
           }
           start = nodePos
           afterStart = node
@@ -534,10 +535,12 @@ export default function constructorFactory() {
               }
             }
             if (option === 'start') {
-              return new Range(
-                start, nodePos + 1, 
+              return {
+                __proto__: rangeProto,
+                start, end: nodePos + 1, 
                 beforeStart, afterStart, 
-                node, afterEnd)
+                beforeEnd: node, afterEnd
+              }
             }
           }
         }
@@ -550,11 +553,12 @@ export default function constructorFactory() {
         beforeStart = beforeEnd
         afterStart = afterEnd
       }
-      return new Range( 
+      return {
+        __proto__: rangeProto,
         start, end, 
         beforeStart, afterStart, 
         beforeEnd, afterEnd 
-      )
+      }
     } 
     enumerate(a, b, c) {
       let { root } = this
@@ -588,7 +592,17 @@ export default function constructorFactory() {
       return d
     }
   }
-  return IntrusiveIndex
+}
+const rangeProto = {
+  get size() {
+    return this.end - this.start
+  },
+  get first() {
+    return this.end > this.start ? this.afterStart : null
+  },
+  get last() {
+    return this.end > this.start ? this.beforeEnd : null
+  }
 }
 export class IndexIterator {
   constructor() {
@@ -649,25 +663,7 @@ export class IndexIterator {
     return new WrapperIterator(iterable)
   }
 }
-export class Range {
-  constructor(start, end, beforeStart, afterStart, beforeEnd, afterEnd) {
-    this.start = start
-    this.end = end
-    this.beforeStart = beforeStart
-    this.afterStart = afterStart
-    this.beforeEnd = beforeEnd
-    this.afterEnd = afterEnd
-  }
-  get size() {
-    return this.end - this.start
-  }
-  get first() {
-    return this.end > this.start ? this.afterStart : null
-  }
-  get last() {
-    return this.end > this.start ? this.beforeEnd : null
-  }
-}
+
 class WrapperIterator extends IndexIterator {
   constructor(iterable) {
     super()
@@ -804,6 +800,14 @@ export const IID = constructorFactory()
 export const IIE = constructorFactory()
 export const IIF = constructorFactory()
 
+export function createFactory() {
+  let source = constructorFactory.toString()
+  let start = source.indexOf('{') + 1
+  let end = source.lastIndexOf('}') 
+  let body = source.slice(start, end)
+  let factory = new Function('IndexIterator', 'rangeProto', body)
+  return () => factory(IndexIterator, rangeProto)  
+}
 
 export class Transaction {
   constructor() {
