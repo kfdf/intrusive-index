@@ -1,5 +1,5 @@
-declare class IndexIterator<T> {
-  moveNext: () => boolean
+export class IndexIterator<T> {
+  moveNext(): boolean
   current: T | null
   map<U>(transform: (value: T) => U): IndexIterator<U>
   filter(predicate: (value: T) => boolean): IndexIterator<T>
@@ -13,23 +13,25 @@ declare class IndexIterator<T> {
   reduce(operation: (accum: T, value: T) => T): T
   next(): IteratorResult<T, undefined>
   [Symbol.iterator](): IndexIterator<T>
+  static from<T>(iterable: Iterable<T>): IndexIterator<T>
 }
-export class Rator<T> extends IndexIterator<T> {
-  constructor(iterable: Iterable<T>)
+
+export class Range<T> {
+  constructor(
+    public start: number,
+    public end: number,
+    public beforeStart: T | null,
+    public afterStart: T | null,
+    public beforeEnd: T | null,
+    public afterEnd: T | null
+  )
+  get size(): number
+  get first(): T | null
+  get last(): T | null
 }
-export interface Range<T> {
-  readonly start: number
-  readonly end: number
-  readonly size: number
-  readonly first: T | null
-  readonly last: T | null
-  readonly beforeStart: T | null
-  readonly afterStart: T | null
-  readonly beforeEnd: T | null
-  readonly afterEnd: T | null
-}
-export type SubRange = 'full' | 'start' | 'end' | 'any'
-export type EnumerationOrder = 'asc' | 'desc'
+
+declare type SubRange = 'full' | 'start' | 'end' | 'any'
+declare type EnumerationOrder = 'asc' | 'desc'
 export interface IntrusiveIndex<T extends U, U = T> {
   readonly comp: (a: U, b: U) => number
   readonly size: number

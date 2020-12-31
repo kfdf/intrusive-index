@@ -1,5 +1,6 @@
 import assert from 'assert'
 import { IIA } from './index.js'
+
 const { floor, min, max, random } = Math
 
 function print(index) {

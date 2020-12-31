@@ -168,28 +168,6 @@ export default function constructorFactory() {
     }
     if (result === UPDATED) return UPDATED
     return deleteRightFix(curr, result)
-  }  
-  /** 
-  @returns {1|2|3} */
-  function deleteRightAt(curr, pos) {
-    let right = curr[r]
-    let size = right[d] >>> 2
-    /** @type {1|2|3} */
-    let result
-    if (size > pos) {
-      result = deleteLeftAt(right, pos)
-    } else if (size < pos) {
-      result = deleteRightAt(right, pos - size - 1)
-    } else if (right[l] && right[r]) {
-      result = deleteLeftAt(right, size - 1)
-      curr[r] = right = detachNode(right, detachedNode)
-    } else {
-      detachedNode = right
-      curr[r] = right = right[l] || right[r]
-      result = RESIZED
-    }
-    if (result === UPDATED) return UPDATED
-    return deleteRightFix(curr, result)
   }
   /** 
   @returns {0|1|2|3} */
@@ -444,12 +422,9 @@ export default function constructorFactory() {
     }  
   }
  
-  return class IntrusiveIndex {
-    constructor(comp, L, R, D) {
+  class IntrusiveIndex {
+    constructor(comp) {
       this.comp = comp
-      this.L = L
-      this.R = R
-      this.D = D
       this.root = { [l]: null, [r]: null, [d]: 1 }
     }
     get size() {
@@ -613,8 +588,9 @@ export default function constructorFactory() {
       return d
     }
   }
+  return IntrusiveIndex
 }
-class IndexIterator {
+export class IndexIterator {
   constructor() {
     this.current = null
   }
@@ -669,8 +645,11 @@ class IndexIterator {
     }
     return ret
   }
+  static from(iterable) {
+    return new WrapperIterator(iterable)
+  }
 }
-class Range {
+export class Range {
   constructor(start, end, beforeStart, afterStart, beforeEnd, afterEnd) {
     this.start = start
     this.end = end
@@ -689,7 +668,7 @@ class Range {
     return this.end > this.start ? this.beforeEnd : null
   }
 }
-export class Rator extends IndexIterator {
+class WrapperIterator extends IndexIterator {
   constructor(iterable) {
     super()
     this.iterator = iterable[Symbol.iterator]()
@@ -764,7 +743,7 @@ class FlattenIterator extends IndexIterator {
           if (current.moveNext) { 
             this.inner = current
           } else {  
-            this.inner = new Rator(current)
+            this.inner = new WrapperIterator(current)
           }
         } else {
           this.current = current

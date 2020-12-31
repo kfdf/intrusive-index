@@ -1,11 +1,11 @@
 // @ts-check
-import { Rator, IIA, IIB, IIC } from './index.js'
+import { IndexIterator, IIA, IIB, IIC } from './index.js'
 
 /**
 @template T
 @template U
 @param {(item: T) => U} selector
-@returns {(rator: Rator<T>) => Rator<[U, T[]]>}  */
+@returns {(rator: IndexIterator<T>) => IndexIterator<[U, T[]]>}  */
 function groups(selector) {
   return rator => {
     let ret = new Map()
@@ -15,23 +15,23 @@ function groups(selector) {
       arr.push(item)
       ret.set(key, arr)
     }
-    return new Rator(ret)
+    return IndexIterator.from(ret)
   }
 }
 /**
 @template T
 @param {(a: T, b: T) => number} comparator
-@returns {(rator: Rator<T>) => Rator<T>}  */
+@returns {(rator: IndexIterator<T>) => IndexIterator<T>}  */
 function ordered(comparator) {
-  return rator => new Rator(rator.toArray().sort(comparator))
+  return rator => IndexIterator.from(rator.toArray().sort(comparator))
 }
 /**
 @template T
 @param {T} value
-@returns {(rator: Rator<T>) => Rator<T>}  */
+@returns {(rator: IndexIterator<T>) => IndexIterator<T>}  */
 function concat(value) {
   // @ts-ignore
-  return rator => new Rator([value, rator]).flatten()
+  return rator => IndexIterator.from([value, rator]).flatten()
 }
 function Department(parentId, name) {
   this.depId = parentId
@@ -123,7 +123,7 @@ console.log(JSON.stringify(getEmplsTree(empPk.getAt(0)), null, 2))
 
 /**
 @param {Employee} manager
-@returns {Rator<Employee>} */
+@returns {IndexIterator<Employee>} */
 function getEmplsFlat(manager) {
   return empManagerIx
     .enumerate(e => e.manager - manager.empId)
