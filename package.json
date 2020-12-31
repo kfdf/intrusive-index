@@ -5,9 +5,10 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "node tests.js"
+    "test": "node tests.js",
+    "bench": "node benchmarks.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "kfdf",
   "license": "MIT"
 }

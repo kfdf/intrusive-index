@@ -32,7 +32,7 @@ function Row(value) {
 }
 function enumerateInChunks(ii, chunkSize) {
   let sum = 0
-  console.log('enumerating values in', chunkSize, 'sized chunks...')
+  console.log('enumerating in', chunkSize, 'sized chunks...')
   let start = Date.now()
   sum = 0
   for (let i = 0, len = ii.size; i < len; i += chunkSize) {
@@ -101,8 +101,10 @@ function run(values) {
   return ii
 
 }
-console.log('creating values...')
-let values = Array(1000000).fill(0).map((_, i) => i)
+let n = Number(process.argv[2])
+if (isNaN(n)) n = 1000000
+console.log('creating ' + n + ' values...')
+let values = Array(n).fill(0).map((_, i) => i)
 let ii = run(values)
 console.log('deleting at position 0...')
 let start = Date.now()
