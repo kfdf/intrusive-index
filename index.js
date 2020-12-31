@@ -6,7 +6,6 @@ export default function constructorFactory() {
   const l = Symbol('left')
   const r = Symbol('right')
   const d = Symbol('diff')
- 
   function addRight(curr, node, comp, replace) {
     let right = curr[r]
     if (right == null) {
@@ -30,17 +29,18 @@ export default function constructorFactory() {
       curr[r] = right = rotate(right)
       if ((right[d] & 3) === 1) return UPDATED
     }
-    if ((curr[d] & 3) === 2) return UNBALANCED
-    return (++curr[d] & 3) === 2 ? RESIZED : UPDATED
+    let diff = curr[d]
+    if ((diff & 3) === 2) return UNBALANCED
+    curr[d] = diff + 1
+    return (diff & 3) === 1 ? RESIZED : UPDATED
   }  
  
   function addLeft(curr, node, comp, replace) {
     let left = curr[l]
     if (left == null) {
       curr[l] = node
-      curr[d] += 4
       detachedNode = null
-      return (--curr[d] & 3) === 0 ? RESIZED : UPDATED
+      return ((curr[d] += 3) & 3) === 0 ? RESIZED : UPDATED
     }    
     let cmp = comp(left, node)
     let result = UNCHANGED
@@ -54,14 +54,16 @@ export default function constructorFactory() {
       detachedNode = null
     }
     if (result === UNCHANGED) return UNCHANGED
-    curr[d] += 4
+    let diff = curr[d]
+    curr[d] = (diff += 4)
     if (result === UPDATED) return UPDATED
     if (result === UNBALANCED) {
       curr[l] = left = rotate(left)
       if ((left[d] & 3) === 1) return UPDATED
     }
-    if ((curr[d] & 3) === 0) return UNBALANCED
-    return (--curr[d] & 3) === 0 ? RESIZED : UPDATED
+    if ((diff & 3) === 0) return UNBALANCED
+    curr[d] = diff - 1
+    return (diff & 3) === 1 ? RESIZED : UPDATED
   }  
   let detachedNode = null  
   function detachNode(target, repl) {
@@ -140,8 +142,10 @@ export default function constructorFactory() {
       curr[l] = left
       if ((left[d] & 3) != 1) return UPDATED
     }
-    if ((curr[d] & 3) === 2) return UNBALANCED
-    return (++curr[d] & 3) === 2 ? UPDATED : RESIZED
+    let diff = curr[d]
+    if ((diff & 3) === 2) return UNBALANCED
+    curr[d] = diff + 1
+    return (diff & 3) === 1 ? UPDATED : RESIZED
   }  
   /** 
   @returns {1|2|3} */
@@ -223,8 +227,10 @@ export default function constructorFactory() {
       curr[r] = right
       if ((right[d] & 3) != 1) return UPDATED
     }
-    if ((curr[d] & 3) === 0) return UNBALANCED
-    return (--curr[d] & 3) === 0 ? UPDATED : RESIZED
+    let diff = curr[d]
+    if ((diff & 3) === 0) return UNBALANCED
+    curr[d] = diff - 1
+    return (diff & 3) === 1 ? UPDATED : RESIZED
   }  
 
   function rotate(node) {
