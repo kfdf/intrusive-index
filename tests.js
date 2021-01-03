@@ -1,6 +1,5 @@
 import assert from 'assert'
 import { IIA } from './index.js'
-
 const { floor, min, max, random } = Math
 
 function print(index) {
@@ -106,7 +105,9 @@ function testValues(values) {
         assert(deleted === repl)
         assert(set.delete(repl.value))
       } else if (value < 0) {
-        let deleted = index.delete({ value: -value })
+        let deleted = len % 2 == 0 ? 
+          index.delete({ value: -value }) :
+          index.delete(a => a.value + value)
         assert(!!deleted == set.delete(-value))
         assert(!deleted || deleted.value === -value)
       } else if (len % 2 == 0) {

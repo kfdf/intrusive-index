@@ -90,7 +90,7 @@ export default function constructorFactory() {
       detachedNode = null
       return UNCHANGED
     }
-    let cmp = comp(left, value)
+    let cmp = value === undefined ? comp(left) : comp(left, value)
     /** @type {0|1|2|3} */
     let result
     if (cmp > 0) {
@@ -177,7 +177,7 @@ export default function constructorFactory() {
       detachedNode = null
       return UNCHANGED  
     }
-    let cmp = comp(right, value)
+    let cmp = value === undefined ? comp(right) : comp(right, value)
     /** @type {0|1|2|3} */
     let result
     if (cmp > 0) {
@@ -452,7 +452,11 @@ export default function constructorFactory() {
     }
     delete(value) {
       let { root, comp } = this
-      deleteLeft(root, value, comp)
+      if (typeof value === 'function') {
+        deleteLeft(root, undefined, value)
+      } else {
+        deleteLeft(root, value, comp)
+      }
       return getDetached()
     }
     deleteAt(pos) {
@@ -467,7 +471,7 @@ export default function constructorFactory() {
       let isComp = typeof value === 'function'
       let node = root[l]
       while (node) {
-        let cmp = isComp ? value(node) : comp(node, value)
+        let cmp = isComp? value(node) : comp(node, value)
         if (cmp < 0) node = node[r]
         else if (cmp > 0) node = node[l]
         else return node
@@ -512,7 +516,6 @@ export default function constructorFactory() {
           beforeStart = beforeEnd // !!
           if (option === 'any') {
             return {
-              __proto__: rangeProto,
               start: nodePos, end: nodePos + 1, 
               beforeStart, afterStart: node, 
               beforeEnd: node, afterEnd
@@ -536,7 +539,6 @@ export default function constructorFactory() {
             }
             if (option === 'start') {
               return {
-                __proto__: rangeProto,
                 start, end: nodePos + 1, 
                 beforeStart, afterStart, 
                 beforeEnd: node, afterEnd
@@ -554,7 +556,6 @@ export default function constructorFactory() {
         afterStart = afterEnd
       }
       return {
-        __proto__: rangeProto,
         start, end, 
         beforeStart, afterStart, 
         beforeEnd, afterEnd 
@@ -593,17 +594,7 @@ export default function constructorFactory() {
     }
   }
 }
-const rangeProto = {
-  get size() {
-    return this.end - this.start
-  },
-  get first() {
-    return this.end > this.start ? this.afterStart : null
-  },
-  get last() {
-    return this.end > this.start ? this.beforeEnd : null
-  }
-}
+
 export class IndexIterator {
   constructor() {
     this.current = null
@@ -623,7 +614,7 @@ export class IndexIterator {
     return new MapIterator(this, transform)
   }
   filter(predicate) {
-    return new FileterIterator(this, predicate)
+    return new FilterIterator(this, predicate)
   }
   flatten() {
     return new FlattenIterator(this)
@@ -697,7 +688,7 @@ class MapIterator extends IndexIterator {
     return ret
   }
 }
-class FileterIterator extends IndexIterator {
+class FilterIterator extends IndexIterator {
   constructor(rator, predicate) {
     super()
     this.rator = rator
@@ -805,13 +796,14 @@ export function createFactory() {
   let start = source.indexOf('{') + 1
   let end = source.lastIndexOf('}') 
   let body = source.slice(start, end)
-  let factory = new Function('IndexIterator', 'rangeProto', body)
-  return () => factory(IndexIterator, rangeProto)  
+  let factory = new Function(IndexIterator.name, body)
+  return () => factory(IndexIterator)  
 }
 
 export class Transaction {
   constructor() {
     this.journal = {
+      savepoints: [],
       indexes: [],
       removals: [],
       inserts: [],
@@ -850,15 +842,18 @@ export class Transaction {
     removals.push(removed)
     inserts.push(null)      
     return removed
+  }
+  savepoint() {
+    let { indexes, savepoints } = this.journal
+    savepoints.push(indexes.length)
   }  
-  replace(index, item, replacee) {
-    let removed = this.insert(index, item)
-    removed = removed || replacee && this.delete(replacee)
-    return removed !== replacee
+  release() {
+    this.journal.savepoints.pop()
   }  
   rollback() {
-    let { indexes, removals, inserts } = this.journal
-    while (indexList.length) {
+    let { indexes, removals, inserts, savepoints } = this.journal
+    let savepoint = savepoints.pop() || 0
+    while (indexes.length > savepoint) {
       let index = indexes.pop()
       let removed = removals.pop()
       let inserted = inserts.pop()
@@ -874,7 +869,7 @@ export class Transaction {
         message: 'rollback failed',
         current, 
         expected: inserted,
-        position: indexList.length,
+        position: indexes.length,
       }
     }
   }

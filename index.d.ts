@@ -23,9 +23,6 @@ export interface Range<T> {
   afterStart: T | null
   beforeEnd: T | null
   afterEnd: T | null
-  readonly size: number
-  readonly first: T | null
-  readonly last: T | null
 }
 
 declare type SubRange = 'full' | 'start' | 'end' | 'any'
@@ -37,6 +34,7 @@ export interface IntrusiveIndex<T extends U, U = T> {
   add(value: T): boolean
   insert(value: T): T | null
   delete(key: U): T | null
+  delete(predicate: (a: U) => number): T | null
   deleteAt(pos: number): T | null
   get(key: U): T | null
   get(predicate: (a: U) => number): T | null
@@ -64,15 +62,18 @@ export const IIF: IndexConstructor
 export function createFactory(): () => IndexConstructor
 export class Transaction {
   readonly journal: {
+    savepoints: number[]
     indexes: IntrusiveIndex<any>[]
     removals: any[]
     inserts: any[]
   }
   add<T>(index: IntrusiveIndex<T, any>, value: T): boolean
   insert<T>(index: IntrusiveIndex<T, any>, value: T): T | null
+  delete<T extends U, U>(index: IntrusiveIndex<T, U>, predicate: (a: U) => number): T | null
   delete<T extends U, U>(index: IntrusiveIndex<T, U>, key: U): T | null
   deleteAt<T>(index: IntrusiveIndex<T, any>, pos: number): T | null
-  replace<T>(index: IntrusiveIndex<T, any>, value: T, replacee: T): boolean
+  savepoint(): void
+  release(): void
   rollback(): void
 }
 export {}

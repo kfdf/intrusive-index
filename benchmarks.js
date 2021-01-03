@@ -1,5 +1,4 @@
 import { IIA } from './index.js'
-
 console.log('warmup...')
 let sum = 0
 for (let i = 0; i < 10; i++) {
@@ -21,6 +20,15 @@ for (let i = 0; i < 10; i++) {
     sum += ii.get(n => n.value - i).value    
     sum += ii.findRange(n => n.value - i, 'any').value    
   }  
+  if (i % 2 === 0) {
+    while (ii.size) {
+      ii.deleteAt(0)
+    } 
+  } else {
+    while (ii.size) {
+      ii.delete({ value: ii.size - 1 })
+    }
+  }
 }
 
 
@@ -81,7 +89,7 @@ function run(values) {
   sum = 0
   for (let i = 0, len = values.length; i < len; i++) {
     let value = values[i]
-    sum += ii.findRange(a => a.value - value, 'any').first.value
+    sum += ii.findRange(a => a.value - value, 'any').afterStart.value
   }
   console.log(Date.now() - start, 'findRange', sum)  
   start = Date.now()
@@ -108,7 +116,9 @@ let values = Array(n).fill(0).map((_, i) => i)
 let ii = run(values)
 console.log('deleting at position 0...')
 let start = Date.now()
-while (ii.size) ii.deleteAt(0)
+for (let i = 0; i < values.length; i++) {
+  while (ii.size) ii.deleteAt(0)
+}
 console.log(Date.now() - start, 'size = ', ii.size)
 
 console.log('-------------------')
