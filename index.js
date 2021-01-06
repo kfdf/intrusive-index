@@ -10,7 +10,6 @@ export default function constructorFactory() {
     let right = curr[r]
     if (right == null) {
       curr[r] = node
-      detachedNode = null
       return (++curr[d] & 3) === 2 ? RESIZED : UPDATED
     } 
     let cmp = comp(right, node)
@@ -19,10 +18,8 @@ export default function constructorFactory() {
       result = addRight(right, node, comp, replace)
     } else if (cmp > 0) {
       result = addLeft(right, node, comp, replace)
-    } else if (replace && right !== node) {
+    } else if (cmp === 0 && replace && right !== node) {
       curr[r] = detachNode(right, node)
-    } else {
-      detachedNode = null
     }
     if (result < RESIZED) return result
     if (result === UNBALANCED) {
@@ -39,7 +36,6 @@ export default function constructorFactory() {
     let left = curr[l]
     if (left == null) {
       curr[l] = node
-      detachedNode = null
       return ((curr[d] += 3) & 3) === 0 ? RESIZED : UPDATED
     }    
     let cmp = comp(left, node)
@@ -48,10 +44,8 @@ export default function constructorFactory() {
       result = addRight(left, node, comp, replace)
     } else if (cmp > 0) {
       result = addLeft(left, node, comp, replace)
-    } else if (replace && left !== node) {
+    } else if (cmp === 0 && replace && left !== node) {
       curr[l] = detachNode(left, node)
-    } else {
-      detachedNode = null
     }
     if (result === UNCHANGED) return UNCHANGED
     let diff = curr[d]
@@ -86,26 +80,27 @@ export default function constructorFactory() {
   @returns {0|1|2|3} */
   function deleteLeft(curr, value, comp) {
     let left = curr[l]
-    if (left == null) {
-      detachedNode = null
-      return UNCHANGED
-    }
+    if (left == null) return UNCHANGED
     let cmp = value === undefined ? comp(left) : comp(left, value)
     /** @type {0|1|2|3} */
-    let result
+    let result = UNCHANGED
     if (cmp > 0) {
       result = deleteLeft(left, value, comp)
     } else if (cmp < 0) {
       result = deleteRight(left, value, comp)
-    } else if (left[l] && left[r]) {
-      let size = left[d] >>> 2
-      result = deleteLeftAt(left, size - 1)
-      curr[l] = left = detachNode(left, detachedNode)
-    } else {
-      detachedNode = left
-      curr[l] = left = left[l] || left[r]
-      result = RESIZED
-    }
+    } else if (cmp === 0) {
+      let ll = left[l]
+      let lr = left[r]
+      if (ll && lr) {
+        let size = left[d] >>> 2
+        result = deleteLeftAt(left, size - 1)
+        curr[l] = left = detachNode(left, detachedNode)
+      } else {
+        detachedNode = left
+        curr[l] = left = ll || lr
+        result = RESIZED
+      }
+    } 
     if (result === UNCHANGED) return UNCHANGED
     curr[d] -= 4
     if (result === UPDATED) return UPDATED  
@@ -173,10 +168,7 @@ export default function constructorFactory() {
   @returns {0|1|2|3} */
   function deleteRight(curr, value, comp) {
     let right = curr[r]
-    if (right == null) {
-      detachedNode = null
-      return UNCHANGED  
-    }
+    if (right == null) return UNCHANGED  
     let cmp = value === undefined ? comp(right) : comp(right, value)
     /** @type {0|1|2|3} */
     let result
@@ -184,14 +176,18 @@ export default function constructorFactory() {
       result = deleteLeft(right, value, comp)
     } else if (cmp < 0) {
       result = deleteRight(right, value, comp)
-    } else if (right[l] && right[r]) {
-      let size = right[d] >>> 2
-      result = deleteLeftAt(right, size - 1)
-      curr[r] = right = detachNode(right, detachedNode)
-    } else {
-      detachedNode = right
-      curr[r] = right = right[l] || right[r]
-      result = RESIZED
+    } else if (cmp === 0) {
+      let rl = right[l]
+      let rr = right[r]
+      if (rl && rr) {
+        let size = right[d] >>> 2
+        result = deleteLeftAt(right, size - 1)
+        curr[r] = right = detachNode(right, detachedNode)
+      } else {
+        detachedNode = right
+        curr[r] = right = rl || rr
+        result = RESIZED
+      }
     }
     if (result === UNCHANGED) return UNCHANGED
     if (result === UPDATED) return UPDATED
@@ -360,7 +356,7 @@ export default function constructorFactory() {
       let cmp = comp(top)
       if (cmp < 0) top = top[r]
       else if (cmp > 0) top = top[l]
-      else break
+      else if (cmp === 0) break
     }
     if (!top) {
       return new WalkerIterator(null, 0)
@@ -369,12 +365,12 @@ export default function constructorFactory() {
     let count = (top[d] >>> 2) + 1
     let node = top[l]
     while (node) {
-      if (comp(node) >= 0) {
-        if (!reversed) nodes.push(node)
-        node = node[l]
-      } else {
+      if (comp(node) < 0) {
         count -= (node[d] >>> 2) + 1
         node = node[r]
+      } else {
+        if (!reversed) nodes.push(node)
+        node = node[l]
       }
     }
     node = top[r]
@@ -447,11 +443,13 @@ export default function constructorFactory() {
       value[l] = null
       value[r] = null
       value[d] = 1
+      detachedNode = null
       addLeft(root, value, comp, true)
       return getDetached()
     }
     delete(value) {
       let { root, comp } = this
+      detachedNode = null
       if (typeof value === 'function') {
         deleteLeft(root, undefined, value)
       } else {
@@ -463,6 +461,7 @@ export default function constructorFactory() {
       let { root, size } = this
       // if (pos < 0) pos = size + pos
       if (pos < 0 || pos >= size) return null
+      detachedNode = null
       deleteLeftAt(root, pos)
       return getDetached()
     }
@@ -474,7 +473,7 @@ export default function constructorFactory() {
         let cmp = isComp? value(node) : comp(node, value)
         if (cmp < 0) node = node[r]
         else if (cmp > 0) node = node[l]
-        else return node
+        else if (cmp === 0) return node
       }
       return null
     }  
