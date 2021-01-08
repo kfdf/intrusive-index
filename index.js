@@ -350,40 +350,74 @@ export default function constructorFactory() {
     }    
     return new WalkerIterator(nodes, count, reversed)
   }
-  function enumerateWhere(root, comp, reversed) {
-    let top = root[l]
-    while (top) {
-      let cmp = comp(top)
-      if (cmp < 0) top = top[r]
-      else if (cmp > 0) top = top[l]
-      else if (cmp === 0) break
+
+  class PredicateIterator extends IndexIterator {
+    constructor(root, comp, reversed) {
+      super()
+      this.root = root
+      this.nodes = null
+      this.comp = comp
+      this.reversed = reversed
     }
-    if (!top) {
-      return new WalkerIterator(null, 0)
-    }
-    let nodes = [top]
-    let count = (top[d] >>> 2) + 1
-    let node = top[l]
-    while (node) {
-      if (comp(node) < 0) {
-        count -= (node[d] >>> 2) + 1
-        node = node[r]
-      } else {
-        if (!reversed) nodes.push(node)
-        node = node[l]
+    buildStack(node, predicate) {
+      let { nodes, reversed, comp } = this
+      while (node) {
+        let cmp = comp(node)
+        if (cmp < 0) {
+          node = node[r]
+        } else if (cmp > 0) {
+          node = node[l]
+        } else if (cmp === 0) {
+          if (predicate) {
+            let cmp = predicate(node)
+            if (reversed) cmp = -cmp
+            if (cmp < 0) {
+              node = node[reversed ? l : r]
+              continue
+            }
+          }
+          nodes.push(node)
+          node = node[reversed ? r : l]
+        } else break
       }
     }
-    node = top[r]
-    while (node) {
-      if (comp(node) > 0) {
-        node = node[l]
-      } else {
-        if (reversed) nodes.push(node)
-        count += (node[d] >>> 2) + 1
-        node = node[r]
+    adjust(predicate) {
+      let { current, nodes, reversed } = this
+      if (!current && !nodes) {
+        this.nodes = nodes = []
+        this.buildStack(this.root, predicate)
+        return
       }
-    }    
-    return new WalkerIterator(nodes, count, reversed)
+      this.current = null
+      while (nodes.length) {
+        let top = nodes.pop()
+        let cmp = predicate(top)
+        if (reversed) cmp = -cmp
+        if (cmp >= 0) {
+          nodes.push(top)
+          break
+        } 
+        current = top
+      }   
+      this.buildStack(current, predicate)
+    }
+    moveNext() {
+      let { nodes, current, comp, reversed } = this
+      if (current) {
+        current = current[reversed ? l : r]
+        while (current) {
+          if (nodes.length || comp(current) === 0) {
+            nodes.push(current)
+          }
+          current = current[reversed ? r : l]
+        }
+      } else if (!nodes) {
+        this.nodes = nodes = []
+        this.buildStack(this.root)
+      }
+      this.current = current = nodes.pop()
+      return !!current 
+    }  
   }
   class WalkerIterator extends IndexIterator {
     constructor(nodes, count, reversed) {
@@ -563,7 +597,7 @@ export default function constructorFactory() {
     enumerate(a, b, c) {
       let { root } = this
       if (typeof a === 'function') {
-        return enumerateWhere(root, a, b === 'desc')
+        return new PredicateIterator(root[l], a, b === 'desc')
       }
       let size = root[d] >>> 2
       if (typeof a !== 'number') {
