@@ -146,43 +146,43 @@ function testQueries(index, set) {
     if (i < ref.length) return ref[i]
     return ref[ref.length - 1] + 1
   }
-  function testRangeObj(r, comp, subrange) {
-    if (subrange != 'any' && subrange !='end') {
+  function testRangeObj(r, comp, findStart, findEnd) {
+    if (findStart) {
       assert(r.beforeStart === index.getAt(r.start - 1))
     } else if (r.beforeStart) {
       assert(comp(r.beforeStart) < 0)
     }
     assert(r.afterStart === index.getAt(r.start))
     assert(r.beforeEnd === index.getAt(r.end - 1))
-    if (subrange != 'any' && subrange !='start') {
+    if (findEnd) {
       assert(r.afterEnd === index.getAt(r.end))    
     } else if (r.afterEnd) {
       assert(comp(r.afterEnd) > 0)
     }
   }
   function testRange(i1, i2) {
-    let opts = i1 > i2 ? 'desc': 'asc'
-    if (opts === 'desc') [i1, i2] = [i2, i1]
+    let descending = i1 > i2
+    if (descending) [i1, i2] = [i2, i1]
     let v1 = getValue(i1)
     let v2 = getValue(i2)
     let comp = n => n.value < v1 ? -1 : n.value < v2 ? 0 : 1
     let r = index.findRange(comp) 
     let { start, end } = r
-    testRangeObj(r)
-    let r2 = index.findRange(comp, 'start')
-    testRangeObj(r2, comp, 'start')
-    let r3 = index.findRange(comp, 'end')
-    testRangeObj(r3, comp, 'end')
-    let r4 = index.findRange(comp, 'any')
-    testRangeObj(r4, comp, 'any')
+    testRangeObj(r, null, true, true)
+    let r2 = index.findRange(comp, true, false)
+    testRangeObj(r2, comp, true, false)
+    let r3 = index.findRange(comp, false, true)
+    testRangeObj(r3, comp, false, true)
+    let r4 = index.findRange(comp, false, false)
+    testRangeObj(r4, comp, false, false)
     assert(start == min(max(0, i1), ref.length))
     assert(end == min(max(0, i2), ref.length))
-    let rator = index.enumerate(start, end, opts)
-    let rator2 = index.enumerate(comp, opts)
+    let rator = index.enumerate(start, end, descending)
+    let rator2 = index.enumerate(comp, descending)
     for (let { value } of rator2) {
       assert(rator.moveNext())
+      assert(value === (descending ? ref[--end] : ref[start++]))
       assert(value === rator.current.value)
-      assert(value === (opts == 'desc' ? ref[--end] : ref[start++]))
     }
     assert(!rator.moveNext())    
   }

@@ -7,7 +7,7 @@ for (let i = 0; i < 10; i++) {
     ii.add({ ['foo' + i]: j, value: j })
   }
   for (let i = 0; i < ii.size; i++) {
-    let rator = ii.enumerate(i, i + 1)
+    let rator = ii.enumerate(i, i + 2)
     while (rator.moveNext()) {
       sum += rator.current.value
     }  
@@ -16,18 +16,23 @@ for (let i = 0; i < 10; i++) {
       sum += rator2.current.value
     }       
     sum += ii.getAt(i).value
+    sum += ii.getAt(i, 2).value
     sum += ii.get({ value: i }).value    
     sum += ii.get(n => n.value - i).value    
     sum += ii.findRange(n => n.value - i, 'any').value    
   }  
-  if (i % 2 === 0) {
+  if (i % 3 === 0) {
     while (ii.size) {
       ii.deleteAt(0)
     } 
-  } else {
+  } else if (i % 3 === 1) {
     while (ii.size) {
       ii.delete({ value: ii.size - 1 })
     }
+  } else {
+    while (ii.size) {
+      ii.delete(a => 0)
+    }    
   }
 }
 
@@ -39,19 +44,9 @@ function Row(value) {
   this.value = value 
 }
 function enumerateInChunks(ii, chunkSize) {
-  let sum = 0
+  let start, sum = 0
   console.log('enumerating in', chunkSize, 'sized chunks...')
-  let start = Date.now()
-  sum = 0
-  for (let i = 0, len = ii.size; i < len; i += chunkSize) {
-    let pred = a => a.value < i ? -1: a.value < i + chunkSize ? 0 : 1
-    let rator = ii.enumerate(pred)
-    while (rator.moveNext()) {
-      sum += rator.current.value
-    } 
-  }
-  console.log(Date.now() - start, 'where', sum)
-  start = Date.now()  
+  start = Date.now()
   sum = 0
   for (let i = 0, len = ii.size; i < len; i += chunkSize) {
     let pred = a => a.value < i ? -1: a.value < i + chunkSize ? 0 : 1
@@ -62,22 +57,39 @@ function enumerateInChunks(ii, chunkSize) {
     }      
   }  
   console.log(Date.now() - start,  'findRange + range', sum)
+  start = Date.now()  
+  sum = 0
+  for (let i = 0, len = ii.size; i < len; i += chunkSize) {
+    let pred = a => a.value < i ? -1: a.value < i + chunkSize ? 0 : 1
+    let rator = ii.enumerate(pred)
+    while (rator.moveNext()) {
+      sum += rator.current.value
+    } 
+  }
+  console.log(Date.now() - start, 'where', sum)
 }
 function run(values) {
   console.log('creating index...')
   let ii = new IIA((a, b) => a.value - b.value)
   let start = Date.now()
+  let sum
   for (let i = 0; i < values.length; i++) {
     ii.add(new Row(values[i]))
   }
   console.log(Date.now() - start)
   console.log('reading values one-by-one...')
   start = Date.now()
-  let sum = 0
-  for (let i = 0, len = ii.size; i < len; i++) {
+  sum = 0
+  for (let i = 0, len = values.length; i < len; i++) {
     sum += ii.getAt(values[i]).value
   }
-  console.log(Date.now() - start, 'getAt', sum)
+  console.log(Date.now() - start, 'getAt', sum) 
+  start = Date.now()
+  sum = 0
+  for (let i = 0, len = ii.size; i < len; i++) {
+    sum += ii.getAt(values[i], true).value
+  }
+  console.log(Date.now() - start, 'getAt cache', sum)
   start = Date.now()
   sum = 0
   for (let i = 0, len = values.length; i < len; i++) {
@@ -117,7 +129,7 @@ let ii = run(values)
 console.log('deleting at position 0...')
 let start = Date.now()
 for (let i = 0; i < values.length; i++) {
-  while (ii.size) ii.deleteAt(0)
+  while (ii.size) ii.deleteAt(a => 0)
 }
 console.log(Date.now() - start, 'size = ', ii.size)
 

@@ -25,8 +25,6 @@ export interface Range<T> {
   afterEnd: T | null
 }
 
-declare type SubRange = 'full' | 'start' | 'end' | 'any'
-declare type EnumerationOrder = 'asc' | 'desc'
 export interface IntrusiveIndex<T extends U, U = T> {
   readonly comp: (a: U, b: U) => number
   readonly size: number
@@ -38,12 +36,14 @@ export interface IntrusiveIndex<T extends U, U = T> {
   deleteAt(pos: number): T | null
   get(key: U): T | null
   get(predicate: (a: U) => number): T | null
-  getAt(pos: number): T | null
-  findRange(predicate: (a: U) => number, subRange?: SubRange ): Range<T>
-  enumerate(predicate: (a: U) => number, order?: EnumerationOrder): IndexIterator<T>
-  enumerate(start: number, end: number, order?: EnumerationOrder): IndexIterator<T>
-  enumerate(start: number, order?: EnumerationOrder): IndexIterator<T>
-  enumerate(order?: EnumerationOrder): IndexIterator<T>
+  getAt(pos: number, cache?: boolean | number): T | null
+  findRange(predicate: (a: U) => number, start?: boolean, end?: boolean): Range<T>
+  enumerate(start: number, end: number, reverse?: boolean): IndexIterator<T>
+  enumerate(start: number, reverse?: boolean): IndexIterator<T>
+  enumerate(reverse?: boolean): IndexIterator<T>
+  enumerate(predicate: (a: U) => number, reverse?: boolean): IndexIterator<T> & {
+    setNext(predicate: (a: U) => number): void
+  }
 }
 export interface IndexConstructor {          
   new <T extends U, U = T>(comparator: (a: U, b: U) => number): IntrusiveIndex<T, U>
@@ -74,6 +74,6 @@ export class Transaction {
   deleteAt<T>(index: IntrusiveIndex<T, any>, pos: number): T | null
   savepoint(): void
   release(): void
-  rollback(): void
+  rollback(): boolean
 }
 export {}

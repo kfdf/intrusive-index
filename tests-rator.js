@@ -23,7 +23,8 @@ function groups(selector) {
 @param {(a: T, b: T) => number} comparator
 @returns {(rator: IndexIterator<T>) => IndexIterator<T>}  */
 function ordered(comparator) {
-  return rator => IndexIterator.from(rator.toArray().sort(comparator))
+  return rator => IndexIterator
+    .from(rator.toArray().sort(comparator))
 }
 /**
 @template T
@@ -31,7 +32,9 @@ function ordered(comparator) {
 @returns {(rator: IndexIterator<T>) => IndexIterator<T>}  */
 function concat(value) {
   // @ts-ignore
-  return rator => IndexIterator.from([value, rator]).flatten()
+  return rator => IndexIterator
+    .from([rator, value])
+    .flatten()
 }
 function Department(parentId, name) {
   this.depId = parentId

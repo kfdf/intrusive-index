@@ -312,149 +312,133 @@ export default function constructorFactory() {
       }
     }
   }
-
-  function enumerateRange(root, start, end, reversed) {
-    let count = end - start
-    if (count <= 0) {
-      return new WalkerIterator(null, 0)
+  class RangeIterator extends IndexIterator {
+    constructor(root, start, end, reversed) {
+      super()
+      let nodes = []
+      this.nodes = nodes
+      this.reversed = reversed
+      this.start = start
+      this.end = end
+      while (root) {
+        let pos = root[d] >>> 2
+        if (pos < start) {
+          start -= pos + 1
+          end -= pos + 1
+          root = root[r]
+        } else if (pos >= end) {
+          root = root[l]
+        } else {
+          nodes.push(root)
+          if (reversed) {
+            start -= pos + 1
+            end -= pos + 1
+            root = root[r]
+          } else {
+            root = root[l]
+          }
+        }
+      }      
     }
-    let node = root[l]
-    while (true) {
-      let pos = node[d] >>> 2
-      if (end <= pos) {
-        node = node[l]
-      } else if (pos < start) {
-        node = node[r]
-        start -= pos + 1
-        end -= pos + 1
-      } else break
-    }
-    if (count === 1) {
-      return new WalkerIterator([node], 1)
-    }
-    let nodes = []
-    if (reversed) start = end - 1
-    while (true) {
-      let pos = node[d] >>> 2
-      if (start < pos) {
-        if (!reversed) nodes.push(node)
-        node = node[l]
-      } else if (start > pos) {
-        start -= pos + 1
-        if (reversed) nodes.push(node)
-        node = node[r]
-      } else {
-        nodes.push(node)
-        break
+    moveNext() {
+      let { nodes, current, start, end, reversed } = this
+      if (start >= end) {
+        this.current = null
+        return false
       }
-    }    
-    return new WalkerIterator(nodes, count, reversed)
+      if (current) {
+        let lt = reversed ? r : l
+        current = current[reversed ? l : r]
+        while (current) {
+          nodes.push(current)
+          current = current[lt]
+        }        
+      }
+      this.start++
+      this.current = current = nodes.pop()
+      return !!current
+    }
   }
-
   class PredicateIterator extends IndexIterator {
     constructor(root, comp, reversed) {
       super()
-      this.root = root
-      this.nodes = null
-      this.comp = comp
+      let nodes = []
+      this.nodes = nodes
       this.reversed = reversed
-    }
-    buildStack(node, predicate) {
-      let { nodes, reversed, comp } = this
-      while (node) {
-        let cmp = comp(node)
+      this.comp = comp
+      let lt = reversed ? r : l
+      while (root) {
+        let cmp = comp(root)
         if (cmp < 0) {
-          node = node[r]
+          root = root[r]
         } else if (cmp > 0) {
-          node = node[l]
+          root = root[l]
         } else if (cmp === 0) {
-          if (predicate) {
-            let cmp = predicate(node)
-            if (reversed) cmp = -cmp
-            if (cmp < 0) {
-              node = node[reversed ? l : r]
-              continue
-            }
-          }
-          nodes.push(node)
-          node = node[reversed ? r : l]
+          nodes.push(root)
+          root = root[lt]
         } else break
-      }
+      }  
     }
-    adjust(predicate) {
+    setNext(predicate) {
       let { current, nodes, reversed } = this
-      if (!current && !nodes) {
-        this.nodes = nodes = []
-        this.buildStack(this.root, predicate)
-        return
-      }
       this.current = null
+      let dt, lt, rt
+      if (reversed) dt = -1, lt = r, rt = l
+      else dt = 1, lt = l, rt = r
       while (nodes.length) {
         let top = nodes.pop()
-        let cmp = predicate(top)
-        if (reversed) cmp = -cmp
-        if (cmp >= 0) {
+        if (predicate(top) * dt >= 0) {
           nodes.push(top)
           break
-        } 
+        }
         current = top
-      }   
-      this.buildStack(current, predicate)
+      }
+      if (!current) return
+      current = current[rt]
+      if (nodes.length === 0) {
+        let { comp } = this
+        while (current) {
+          if (predicate(current) * dt < 0) {
+            current = current[rt]
+          } else if (comp(current) === 0) {
+            nodes.push(current)
+            current = current[lt]
+            break
+          } else {
+            current = current[lt]
+          }
+        }
+      }
+      while (current) {
+        if (predicate(current) * dt >= 0) {
+          nodes.push(current)
+          current = current[lt]
+        } else {
+          current = current[rt]
+        }
+      }
     }
     moveNext() {
       let { nodes, current, comp, reversed } = this
       if (current) {
+        let lt = reversed ? r : l
         current = current[reversed ? l : r]
         while (current) {
           if (nodes.length || comp(current) === 0) {
             nodes.push(current)
           }
-          current = current[reversed ? r : l]
+          current = current[lt]
         }
-      } else if (!nodes) {
-        this.nodes = nodes = []
-        this.buildStack(this.root)
       }
       this.current = current = nodes.pop()
       return !!current 
-    }  
-  }
-  class WalkerIterator extends IndexIterator {
-    constructor(nodes, count, reversed) {
-      super()
-      this.nodes = nodes
-      this.count = count
-      this.reversed = reversed
-    }
-    moveNext() {
-      if (--this.count < 0) {
-        this.current = null
-        return false
-      } 
-      let { nodes, current, reversed } = this
-      if (current) {
-        if (reversed) {
-          current = current[l]
-          while (current) {
-            nodes.push(current)
-            current = current[r]
-          }
-        } else {
-          current = current[r]
-          while (current) {
-            nodes.push(current)
-            current = current[l]
-          }
-        }
-      }
-      this.current = nodes.pop()
-      return true
     }  
   }
   return class IntrusiveIndex {
     constructor(comp) {
       this.comp = comp
       this.root = { [l]: null, [r]: null, [d]: 1 }
+      this.cache = null
     }
     get size() {
       return this.root[d] >>> 2
@@ -470,7 +454,9 @@ export default function constructorFactory() {
       value[l] = null
       value[r] = null
       value[d] = 1
-      return !!addLeft(root, value, comp, false)
+      let added = addLeft(root, value, comp, false)
+      if (added) this.cache = null
+      return added
     }
     insert(value) {
       let { root, comp } = this
@@ -478,17 +464,20 @@ export default function constructorFactory() {
       value[r] = null
       value[d] = 1
       detachedNode = null
-      addLeft(root, value, comp, true)
+      let added = addLeft(root, value, comp, true)
+      if (added) this.cache = null
       return getDetached()
     }
     delete(value) {
       let { root, comp } = this
       detachedNode = null
+      let deleted
       if (typeof value === 'function') {
-        deleteLeft(root, undefined, value)
+        deleted = deleteLeft(root, undefined, value)
       } else {
-        deleteLeft(root, value, comp)
+        deleted = deleteLeft(root, value, comp)
       }
+      if (deleted) this.cache = null
       return getDetached()
     }
     deleteAt(pos) {
@@ -497,6 +486,7 @@ export default function constructorFactory() {
       if (pos < 0 || pos >= size) return null
       detachedNode = null
       deleteLeftAt(root, pos)
+      this.cache = null
       return getDetached()
     }
     get(value) {
@@ -511,24 +501,85 @@ export default function constructorFactory() {
       }
       return null
     }  
-    getAt(pos) {
+    getAt(pos, threshold) {
       let { root, size } = this
-      // if (pos < 0) pos = size + pos
       if (pos < 0 || pos >= size) return null
-      let node = root[l]
-      while (true) {
-        let size = node[d] >>> 2
-        if (pos < size) {
-          node = node[l]
-        } else if (pos > size) {
-          pos -= size + 1
-          node = node[r]
+      if (threshold === undefined) {
+        let node = root[l]      
+        while (true) {
+          let size = node[d] >>> 2
+          if (pos < size) {
+            node = node[l]
+          } else if (pos > size) {
+            pos -= size + 1
+            node = node[r]
+          } else {
+            return node
+          }
+        }
+      } else {
+        let { cache } = this
+        let node, start, end
+        if (!cache) {
+          node = root[l]
+          start = 0
+          end = size          
+          this.cache = cache = {
+            start, end, node, prev: null, next: null
+          } 
         } else {
-          return node
+          while (pos >= cache.end || pos < cache.start) {
+            cache = cache.next
+          }
+          ({ start, end, node } = cache)
+          pos -= start
+        }
+        while (true) {
+          let size
+          size = node[d] >>> 2
+          if (pos < size) {
+            node = node[l]
+            end = start + size
+          } else if (pos > size) {
+            size++
+            pos -= size
+            start += size
+            node = node[r]
+          } else {
+            this.cache = cache
+            return node
+          }
+          size = node[d] >>> 2
+          if (pos < size) {
+            node = node[l]
+            end = start + size
+          } else if (pos > size) {
+            size++
+            pos -= size
+            start += size
+            node = node[r]
+          } else {
+            this.cache = cache
+            return node
+          }     
+          if (end - start > threshold) {
+            let { prev } = cache
+            if (prev) {
+              cache = prev
+              cache.start = start
+              cache.end = end
+              cache.node = node               
+            } else {
+              cache = cache.prev = {
+                start, end, node, 
+                prev: null, next: cache,
+              }
+            }
+          }          
         }
       }
-    }
-    findRange(comp, option) {
+    }   
+    findRange(comp, findStart = true, findEnd = true) {
       let { root } = this
       let node = root[l]
       let end = 0
@@ -547,7 +598,7 @@ export default function constructorFactory() {
         if (start === -1 && cmp === 0) {
           let nodePos = end + (node[d] >>> 2)
           beforeStart = beforeEnd // !!
-          if (option === 'any') {
+          if (!findStart && !findEnd) {
             return {
               start: nodePos, end: nodePos + 1, 
               beforeStart, afterStart: node, 
@@ -556,7 +607,7 @@ export default function constructorFactory() {
           }
           start = nodePos
           afterStart = node
-          if (option !== 'end') {
+          if (findStart) {
             let offset = end
             let node2 = node[l]
             while (node2) {
@@ -570,7 +621,7 @@ export default function constructorFactory() {
                 node2 = node2[l]
               }
             }
-            if (option === 'start') {
+            if (!findEnd) {
               return {
                 start, end: nodePos + 1, 
                 beforeStart, afterStart, 
@@ -597,7 +648,7 @@ export default function constructorFactory() {
     enumerate(a, b, c) {
       let { root } = this
       if (typeof a === 'function') {
-        return new PredicateIterator(root[l], a, b === 'desc')
+        return new PredicateIterator(root[l], a, b)
       }
       let size = root[d] >>> 2
       if (typeof a !== 'number') {
@@ -614,7 +665,7 @@ export default function constructorFactory() {
           b = b < size ? b : size
         }
       }
-      return enumerateRange(root, a, b, c === 'desc')
+      return new RangeIterator(root, a, b, c)
     }
     static get l() {
       return l
@@ -653,7 +704,7 @@ export class IndexIterator {
     return new FlattenIterator(this)
   }
   skipTake(skip, take) {
-    return new RangeIterator(this, skip, take)
+    return new SkipTakeIterator(this, skip, take)
   }
   fallback(value) {
     return new FallbackIterator(this, value)
@@ -776,7 +827,7 @@ class FlattenIterator extends IndexIterator {
     }
   }
 }
-class RangeIterator extends IndexIterator {
+class SkipTakeIterator extends IndexIterator {
   constructor(rator, start, length = -1) {
     super()
     this.rator = rator
@@ -898,12 +949,8 @@ export class Transaction {
       } else if (removed) {
         current = index.insert(removed)
       }
-      if (current !== inserted) throw {
-        message: 'rollback failed',
-        current, 
-        expected: inserted,
-        position: indexes.length,
-      }
+      if (current !== inserted) return false
     }
+    return true
   }
 }
