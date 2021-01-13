@@ -72,7 +72,7 @@ export default function constructorFactory() {
     if (!ret) return ret
     ret[l] = null
     ret[r] = null
-    ret[d] = 1
+    ret[d] = -1
     detachedNode = null
     return ret
   }
@@ -528,40 +528,23 @@ export default function constructorFactory() {
             start, end, node, prev: null, next: null
           } 
         } else {
-          while (pos >= cache.end || pos < cache.start) {
+          while (pos < cache.start || pos >= cache.end) {
             cache = cache.next
           }
           ({ start, end, node } = cache)
-          pos -= start
         }
         while (true) {
-          let size
-          size = node[d] >>> 2
-          if (pos < size) {
+          let mid = (node[d] >>> 2) + start
+          if (pos < mid) {
             node = node[l]
-            end = start + size
-          } else if (pos > size) {
-            size++
-            pos -= size
-            start += size
+            end = mid
+          } else if (pos > mid) {
+            start = mid + 1
             node = node[r]
           } else {
             this.cache = cache
             return node
           }
-          size = node[d] >>> 2
-          if (pos < size) {
-            node = node[l]
-            end = start + size
-          } else if (pos > size) {
-            size++
-            pos -= size
-            start += size
-            node = node[r]
-          } else {
-            this.cache = cache
-            return node
-          }     
           if (end - start > threshold) {
             let { prev } = cache
             if (prev) {
