@@ -562,70 +562,76 @@ export default function constructorFactory() {
         }
       }
     }   
-    findRange(comp, findStart = true, findEnd = true) {
-      let { root } = this
+    findRange(value, findStart, findEnd) {
+      let { root, comp } = this
+      let isComp = typeof value === 'function'
+      if (findStart === undefined) findStart = isComp 
+      if (findEnd === undefined) findEnd = isComp 
       let node = root[l]
       let end = 0
       let start = -1
-      let beforeStart = null
-      let afterStart = null
-      let beforeEnd = null
-      let afterEnd = null
+      let preStart = null
+      let atStart = null
+      let preEnd = null
+      let atEnd = null
       while (node) {
-        let cmp = comp(node)
+        let cmp = isComp ? 
+          value(node) : comp(node, value)
         if (cmp > 0) {
-          afterEnd = node
+          atEnd = node
           node = node[l]
           continue
         } 
         if (start === -1 && cmp === 0) {
           let nodePos = end + (node[d] >>> 2)
-          beforeStart = beforeEnd // !!
+          preStart = preEnd // !!
           if (!findStart && !findEnd) {
             return {
               start: nodePos, end: nodePos + 1, 
-              beforeStart, afterStart: node, 
-              beforeEnd: node, afterEnd
+              preStart, atStart: node, 
+              preEnd: node, atEnd
             }
           }
           start = nodePos
-          afterStart = node
+          atStart = node
           if (findStart) {
             let offset = end
             let node2 = node[l]
             while (node2) {
-              if (comp(node2) < 0) {
+              let cmp = isComp ? 
+                value(node2) : comp(node2, value)
+              if (cmp < 0) {
                 offset += (node2[d] >>> 2) + 1
-                beforeStart = node2
+                preStart = node2
                 node2 = node2[r]
               } else {
                 start = offset + (node2[d] >>> 2)
-                afterStart = node2
+                atStart = node2
                 node2 = node2[l]
               }
             }
             if (!findEnd) {
               return {
                 start, end: nodePos + 1, 
-                beforeStart, afterStart, 
-                beforeEnd: node, afterEnd
+                preStart, atStart, 
+                preEnd: node, atEnd
               }
             }
           }
         }
         end += (node[d] >>> 2) + 1
-        beforeEnd = node
+        preEnd = node
         node = node[r]
       }
       if (start === -1) {
         start = end
-        beforeStart = beforeEnd
-        afterStart = afterEnd
+        preStart = preEnd
+        atStart = atEnd
       }
       return {
         start, end, 
-        beforeStart, afterStart, 
-        beforeEnd, afterEnd 
+        preStart, atStart, 
+        preEnd, atEnd 
       }
     } 
     enumerate(a, b, c) {

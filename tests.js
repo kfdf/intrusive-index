@@ -148,16 +148,16 @@ function testQueries(index, set) {
   }
   function testRangeObj(r, comp, findStart, findEnd) {
     if (findStart) {
-      assert(r.beforeStart === index.getAt(r.start - 1))
-    } else if (r.beforeStart) {
-      assert(comp(r.beforeStart) < 0)
+      assert(r.preStart === index.getAt(r.start - 1))
+    } else if (r.preStart) {
+      assert(comp(r.preStart) < 0)
     }
-    assert(r.afterStart === index.getAt(r.start))
-    assert(r.beforeEnd === index.getAt(r.end - 1))
+    assert(r.atStart === index.getAt(r.start))
+    assert(r.preEnd === index.getAt(r.end - 1))
     if (findEnd) {
-      assert(r.afterEnd === index.getAt(r.end))    
-    } else if (r.afterEnd) {
-      assert(comp(r.afterEnd) > 0)
+      assert(r.atEnd === index.getAt(r.end))    
+    } else if (r.atEnd) {
+      assert(comp(r.atEnd) > 0)
     }
   }
   function testRange(i1, i2) {

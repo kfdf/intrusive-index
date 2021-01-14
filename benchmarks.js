@@ -19,7 +19,7 @@ for (let i = 0; i < 10; i++) {
     sum += ii.getAt(i, 2).value
     sum += ii.get({ value: i }).value    
     sum += ii.get(n => n.value - i).value    
-    sum += ii.findRange(n => n.value - i, 'any').value    
+    sum += ii.findRange(n => n.value - i, 'any').atStart.value    
   }  
   if (i % 3 === 0) {
     while (ii.size) {
@@ -101,7 +101,7 @@ function run(values) {
   sum = 0
   for (let i = 0, len = values.length; i < len; i++) {
     let value = values[i]
-    sum += ii.findRange(a => a.value - value, 'any').afterStart.value
+    sum += ii.findRange(a => a.value - value, 'any').atStart.value
   }
   console.log(Date.now() - start, 'findRange', sum)  
   start = Date.now()

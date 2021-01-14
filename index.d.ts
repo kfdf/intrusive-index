@@ -16,14 +16,17 @@ export class IndexIterator<T> {
   static from<T>(iterable: Iterable<T>): IndexIterator<T>
 }
 
-export interface Range<T> {
+declare interface Range<T> {
   start: number
   end: number
-  beforeStart: T | null
-  afterStart: T | null
-  beforeEnd: T | null
-  afterEnd: T | null
+  atStart: T | null
+  preEnd: T | null
 }
+declare type EndRange<T, E> = E extends true ? 
+  Range<T> & { atEnd: T | null } : Range<T>
+declare type FullRange<T, S, E> = S extends true ? 
+  EndRange<T, E> & { preStart: T | null } : EndRange<T, E>
+
 
 export interface IntrusiveIndex<T extends U, U = T> {
   readonly comp: (a: U, b: U) => number
@@ -37,7 +40,10 @@ export interface IntrusiveIndex<T extends U, U = T> {
   get(key: U): T | null
   get(predicate: (a: U) => number): T | null
   getAt(pos: number, cache?: boolean | number): T | null
-  findRange(predicate: (a: U) => number, start?: boolean, end?: boolean): Range<T>
+  findRange<S extends boolean = true, E extends boolean = true>(
+    predicate: (a: U) => number, start?: S, end?: E): FullRange<T, S, E>
+  findRange<S extends boolean = false, E extends boolean = false>(
+    key: U, start?: S, end?: E): FullRange<T, S, E>
   enumerate(start: number, end: number, reverse?: boolean): IndexIterator<T>
   enumerate(start: number, reverse?: boolean): IndexIterator<T>
   enumerate(reverse?: boolean): IndexIterator<T>
