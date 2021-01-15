@@ -866,11 +866,13 @@ export const IID = constructorFactory()
 export const IIE = constructorFactory()
 export const IIF = constructorFactory()
 
+let factoryCount = 0
 export function createFactory() {
   let source = constructorFactory.toString()
   let start = source.indexOf('{') + 1
   let end = source.lastIndexOf('}') 
   let body = source.slice(start, end)
+  body = '/*' + factoryCount++ + '*/' + body
   let factory = new Function(IndexIterator.name, body)
   return () => factory(IndexIterator)  
 }

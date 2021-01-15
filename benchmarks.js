@@ -1,7 +1,8 @@
-import { IIA } from './index.js'
+import { createFactory } from './index.js'
 console.log('warmup...')
-let sum = 0
 for (let i = 0; i < 10; i++) {
+  let sum = 0
+  let IIA = createFactory()()
   let ii = new IIA((a, b) => a.value - b.value)
   for (let j = 0; j < 100; j++) {
     ii.add({ ['foo' + i]: j, value: j })
@@ -16,7 +17,7 @@ for (let i = 0; i < 10; i++) {
       sum += rator2.current.value
     }       
     sum += ii.getAt(i).value
-    sum += ii.getAt(i, 2).value
+    sum += ii.getAt(i, true).value
     sum += ii.get({ value: i }).value    
     sum += ii.get(n => n.value - i).value    
     sum += ii.findRange(n => n.value - i, 'any').atStart.value    
@@ -35,6 +36,7 @@ for (let i = 0; i < 10; i++) {
     }    
   }
 }
+let IIA = createFactory()()
 
 
 function Row(value) { 
@@ -68,6 +70,7 @@ function enumerateInChunks(ii, chunkSize) {
   }
   console.log(Date.now() - start, 'where', sum)
 }
+
 function run(values) {
   console.log('creating index...')
   let ii = new IIA((a, b) => a.value - b.value)
