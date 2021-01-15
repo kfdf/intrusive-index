@@ -341,11 +341,11 @@ export default function constructorFactory() {
       }      
     }
     moveNext() {
-      let { nodes, current, start, end, reversed } = this
-      if (start >= end) {
+      if (this.start++ >= this.end) {
         this.current = null
         return false
       }
+      let { nodes, current, reversed } = this
       if (current) {
         let lt = reversed ? r : l
         current = current[reversed ? l : r]
@@ -354,9 +354,8 @@ export default function constructorFactory() {
           current = current[lt]
         }        
       }
-      this.start++
-      this.current = current = nodes.pop()
-      return !!current
+      this.current = nodes.pop()
+      return true
     }
   }
   class PredicateIterator extends IndexIterator {
@@ -655,6 +654,9 @@ export default function constructorFactory() {
         }
       }
       return new RangeIterator(root, a, b, c)
+    }
+    into(func) {
+      return func(this)
     }
     static get l() {
       return l

@@ -177,7 +177,7 @@ function testQueries(index, set) {
     testRangeObj(r4, comp, false, false)
     assert(start == min(max(0, i1), ref.length))
     assert(end == min(max(0, i2), ref.length))
-    let rator = index.enumerate(start, end, descending)
+    let rator = index.enumerate(i1, i2, descending)
     let rator2 = index.enumerate(comp, descending)
     for (let { value } of rator2) {
       assert(rator.moveNext())

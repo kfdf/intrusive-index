@@ -50,6 +50,7 @@ export interface IntrusiveIndex<T extends U, U = T> {
   enumerate(predicate: (a: U) => number, reverse?: boolean): IndexIterator<T> & {
     setNext(predicate: (a: U) => number): void
   }
+  into<K>(func: (ii: IntrusiveIndex<T, U>) => K) : K
 }
 export interface IndexConstructor {          
   new <T extends U, U = T>(comparator: (a: U, b: U) => number): IntrusiveIndex<T, U>
