@@ -1,43 +1,54 @@
 import { createFactory } from './index.js'
-console.log('warmup...')
-for (let i = 0; i < 10; i++) {
-  let sum = 0
-  let IIA = createFactory()()
-  let ii = new IIA((a, b) => a.value - b.value)
-  for (let j = 0; j < 100; j++) {
-    ii.add({ ['foo' + i]: j, value: j })
-  }
-  for (let i = 0; i < ii.size; i++) {
-    let rator = ii.enumerate(i, i + 2)
-    while (rator.moveNext()) {
-      sum += rator.current.value
-    }  
-    let rator2 = ii.enumerate(a => a.value - i)
-    while (rator2.moveNext()) {
-      sum += rator2.current.value
-    }       
-    sum += ii.getAt(i).value
-    sum += ii.getAt(i, true).value
-    sum += ii.get({ value: i }).value    
-    sum += ii.get(n => n.value - i).value    
-    sum += ii.findRange(n => n.value - i, 'any').atStart.value    
-  }  
-  if (i % 3 === 0) {
-    while (ii.size) {
-      ii.deleteAt(0)
-    } 
-  } else if (i % 3 === 1) {
-    while (ii.size) {
-      ii.delete({ value: ii.size - 1 })
-    }
-  } else {
-    while (ii.size) {
-      ii.delete(a => 0)
-    }    
+let IIA = createFactory()()
+let mega = true
+let n = 1000000
+for (let arg of process.argv.slice(2)) {
+  if (arg === 'mega') {
+    mega = true
+  } else if (arg === 'mono') {
+    mega = false
+  } else if (!isNaN(+arg)) {
+    n = +arg
   }
 }
-let IIA = createFactory()()
-
+if (mega) {
+  console.log('warmup...')
+  for (let i = 0; i < 10; i++) {
+    let sum = 0
+    let ii = new IIA((a, b) => a.value - b.value)
+    for (let j = 0; j < 100; j++) {
+      ii.add({ ['foo' + i]: j, value: j })
+    }
+    for (let i = 0; i < ii.size; i++) {
+      let rator = ii.enumerate(i, i + 2)
+      while (rator.moveNext()) {
+        sum += rator.current.value
+      }  
+      let rator2 = ii.enumerate(a => a.value - i)
+      while (rator2.moveNext()) {
+        sum += rator2.current.value
+      }       
+      sum += ii.getAt(i).value
+      sum += ii.getAt(i, true).value
+      sum += ii.get({ value: i }).value    
+      sum += ii.get(n => n.value - i, true).value    
+      sum += ii.findRange(n => n.value - i, 'any').atStart.value    
+    }  
+    if (i % 3 === 0) {
+      while (ii.size) {
+        ii.deleteAt(0)
+      } 
+    } else if (i % 3 === 1) {
+      while (ii.size) {
+        ii.delete({ value: ii.size - 1 })
+      }
+    } else {
+      while (ii.size) {
+        ii.delete(a => 0)
+      }    
+    }
+  }
+}
 
 function Row(value) { 
   this[IIA.l] = null 
@@ -46,11 +57,11 @@ function Row(value) {
   this.value = value 
 }
 function enumerateInChunks(ii, chunkSize) {
-  let start, sum = 0
+  let start, sum = 0, len = ii.size
   console.log('enumerating in', chunkSize, 'sized chunks...')
   start = Date.now()
   sum = 0
-  for (let i = 0, len = ii.size; i < len; i += chunkSize) {
+  for (let i = 0; i < len; i += chunkSize) {
     let pred = a => a.value < i ? -1: a.value < i + chunkSize ? 0 : 1
     let { start, end } = ii.findRange(pred)
     let rator = ii.enumerate(start, end)
@@ -61,7 +72,7 @@ function enumerateInChunks(ii, chunkSize) {
   console.log(Date.now() - start,  'findRange + range', sum)
   start = Date.now()  
   sum = 0
-  for (let i = 0, len = ii.size; i < len; i += chunkSize) {
+  for (let i = 0; i < len; i += chunkSize) {
     let pred = a => a.value < i ? -1: a.value < i + chunkSize ? 0 : 1
     let rator = ii.enumerate(pred)
     while (rator.moveNext()) {
@@ -124,8 +135,6 @@ function run(values) {
   return ii
 
 }
-let n = Number(process.argv[2])
-if (isNaN(n)) n = 1000000
 console.log('creating ' + n + ' values...')
 let values = Array(n).fill(0).map((_, i) => i)
 let ii = run(values)

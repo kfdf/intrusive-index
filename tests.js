@@ -139,6 +139,7 @@ function testQueries(index, set) {
   let ref = [...set].sort((a, b) => a - b)
   for (let i = -2; i < ref.length + 2; i++) {
     let node = index.getAt(i)
+    assert(node === index.getAt(i, true))
     assert(ref[i] == (node ? node.value : null))
   }
   function getValue(i) {
@@ -146,15 +147,15 @@ function testQueries(index, set) {
     if (i < ref.length) return ref[i]
     return ref[ref.length - 1] + 1
   }
-  function testRangeObj(r, comp, findStart, findEnd) {
-    if (findStart) {
+  function testRangeObj(r, comp, option) {
+    if (option === 'start' || option === 'full') {
       assert(r.preStart === index.getAt(r.start - 1))
     } else if (r.preStart) {
       assert(comp(r.preStart) < 0)
     }
     assert(r.atStart === index.getAt(r.start))
     assert(r.preEnd === index.getAt(r.end - 1))
-    if (findEnd) {
+    if (option === 'end' || option === 'full') {
       assert(r.atEnd === index.getAt(r.end))    
     } else if (r.atEnd) {
       assert(comp(r.atEnd) > 0)
@@ -168,17 +169,17 @@ function testQueries(index, set) {
     let comp = n => n.value < v1 ? -1 : n.value < v2 ? 0 : 1
     let r = index.findRange(comp) 
     let { start, end } = r
-    testRangeObj(r, null, true, true)
-    let r2 = index.findRange(comp, true, false)
-    testRangeObj(r2, comp, true, false)
-    let r3 = index.findRange(comp, false, true)
-    testRangeObj(r3, comp, false, true)
-    let r4 = index.findRange(comp, false, false)
-    testRangeObj(r4, comp, false, false)
+    testRangeObj(r, null, 'full')
+    let r2 = index.findRange(comp, 'start')
+    testRangeObj(r2, comp, 'start')
+    let r3 = index.findRange(comp, 'end')
+    testRangeObj(r3, comp, 'end')
+    let r4 = index.findRange(comp, 'any')
+    testRangeObj(r4, comp, 'any')
     assert(start == min(max(0, i1), ref.length))
     assert(end == min(max(0, i2), ref.length))
-    let rator = index.enumerate(i1, i2, descending)
-    let rator2 = index.enumerate(comp, descending)
+    let rator = index.enumerate(i1, i2, descending ? 'desc' : 'asc')
+    let rator2 = index.enumerate(comp, descending ? 'desc' : 'asc')
     for (let { value } of rator2) {
       assert(rator.moveNext())
       assert(value === (descending ? ref[--end] : ref[start++]))

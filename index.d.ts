@@ -22,12 +22,13 @@ declare interface Range<T> {
   atStart: T | null
   preEnd: T | null
 }
-declare type EndRange<T, E> = E extends true ? 
-  Range<T> & { atEnd: T | null } : Range<T>
-declare type FullRange<T, S, E> = S extends true ? 
-  EndRange<T, E> & { preStart: T | null } : EndRange<T, E>
+declare type FullRange<T, O> = 
+  O extends 'full' ? Range<T> & { preStart: T | null; atEnd: T | null } :
+  O extends 'start' ? Range<T> & { preStart: T | null } :
+  O extends 'end' ? Range<T> & { atEnd: T | null } : Range<T>
 
-
+declare type Order = 'asc' | 'desc'
+declare type RangeOption = 'any' | 'start' | 'end' | 'full'
 export interface IntrusiveIndex<T extends U, U = T> {
   readonly comp: (a: U, b: U) => number
   readonly size: number
@@ -38,16 +39,14 @@ export interface IntrusiveIndex<T extends U, U = T> {
   delete(predicate: (a: U) => number): T | null
   deleteAt(pos: number): T | null
   get(key: U): T | null
-  get(predicate: (a: U) => number): T | null
+  getAny(predicate: (a: U) => number): T | null
   getAt(pos: number, cache?: boolean | number): T | null
-  findRange<S extends boolean = true, E extends boolean = true>(
-    predicate: (a: U) => number, start?: S, end?: E): FullRange<T, S, E>
-  findRange<S extends boolean = false, E extends boolean = false>(
-    key: U, start?: S, end?: E): FullRange<T, S, E>
-  enumerate(start: number, end: number, reverse?: boolean): IndexIterator<T>
-  enumerate(start: number, reverse?: boolean): IndexIterator<T>
-  enumerate(reverse?: boolean): IndexIterator<T>
-  enumerate(predicate: (a: U) => number, reverse?: boolean): IndexIterator<T> & {
+  findRange<O extends RangeOption = 'full'>(predicate: (a: U) => number, option?: O): FullRange<T, O>
+  findRange<O extends RangeOption = 'any'>(key: U, option?: O): FullRange<T, O>
+  enumerate(start: number, end: number, order?: Order): IndexIterator<T>
+  enumerate(start: number, order?: Order): IndexIterator<T>
+  enumerate(order?: Order): IndexIterator<T>
+  enumerate(predicate: (a: U) => number, order?: Order): IndexIterator<T> & {
     setNext(predicate: (a: U) => number): void
   }
   into<K>(func: (ii: IntrusiveIndex<T, U>) => K) : K

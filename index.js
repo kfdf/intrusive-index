@@ -320,25 +320,39 @@ export default function constructorFactory() {
       this.reversed = reversed
       this.start = start
       this.end = end
+      let offset = 0
       while (root) {
-        let pos = root[d] >>> 2
+        let size = root[d] >>> 2
+        let pos = offset + size
         if (pos < start) {
-          start -= pos + 1
-          end -= pos + 1
+          offset += size + 1
           root = root[r]
         } else if (pos >= end) {
           root = root[l]
         } else {
-          nodes.push(root)
-          if (reversed) {
-            start -= pos + 1
-            end -= pos + 1
-            root = root[r]
-          } else {
-            root = root[l]
-          }
+          let target = reversed ? end - 1 : start
+          while (true) {
+            if (pos < target) {
+              offset += size + 1
+              if (reversed) nodes.push(root)
+              root = root[r]
+            } else if (pos > target) {
+              if (!reversed) nodes.push(root)
+              root = root[l]
+            } else {
+              nodes.push(root)
+              root = null
+            }
+            if (!root) {
+              if (reversed) this.end = pos + 1
+              else this.start = pos
+              return
+            }
+            size = root[d] >>> 2
+            pos = offset + size
+          }          
         }
-      }      
+      }   
     }
     moveNext() {
       if (this.start++ >= this.end) {
@@ -354,8 +368,8 @@ export default function constructorFactory() {
           current = current[lt]
         }        
       }
-      this.current = nodes.pop()
-      return true
+      this.current = current = nodes.pop()
+      return !!current
     }
   }
   class PredicateIterator extends IndexIterator {
@@ -560,13 +574,14 @@ export default function constructorFactory() {
           }          
         }
       }
-    }   
-    findRange(value, findStart, findEnd) {
-      let { root, comp } = this
-      let isComp = typeof value === 'function'
-      if (findStart === undefined) findStart = isComp 
-      if (findEnd === undefined) findEnd = isComp 
+    } 
+    findRange(value, option) {
+      let { comp, root } = this
       let node = root[l]
+      let isComp = typeof value === 'function'
+      if (option === undefined) {
+        option = isComp ? 'full' : 'any'
+      }
       let end = 0
       let start = -1
       let preStart = null
@@ -584,7 +599,7 @@ export default function constructorFactory() {
         if (start === -1 && cmp === 0) {
           let nodePos = end + (node[d] >>> 2)
           preStart = preEnd // !!
-          if (!findStart && !findEnd) {
+          if (option === 'any') {
             return {
               start: nodePos, end: nodePos + 1, 
               preStart, atStart: node, 
@@ -593,7 +608,7 @@ export default function constructorFactory() {
           }
           start = nodePos
           atStart = node
-          if (findStart) {
+          if (option !== 'end') {
             let offset = end
             let node2 = node[l]
             while (node2) {
@@ -609,7 +624,7 @@ export default function constructorFactory() {
                 node2 = node2[l]
               }
             }
-            if (!findEnd) {
+            if (option === 'start') {
               return {
                 start, end: nodePos + 1, 
                 preStart, atStart, 
@@ -634,26 +649,16 @@ export default function constructorFactory() {
       }
     } 
     enumerate(a, b, c) {
-      let { root } = this
+      let node = this.root[l]
       if (typeof a === 'function') {
-        return new PredicateIterator(root[l], a, b)
-      }
-      let size = root[d] >>> 2
-      if (typeof a !== 'number') {
-        c = a
-        b = size
-        a = 0
+        return new PredicateIterator(node, a, b === 'desc')
+      } else if (typeof a !== 'number') {
+        return new RangeIterator(node, 0, Infinity, a === 'desc')
+      } else if (typeof b !== 'number') {
+        return new RangeIterator(node, a, Infinity, b === 'desc')
       } else {
-        a = a > 0 ? a : 0
-        if (typeof b !== 'number') {
-          c = b
-          b = size
-        } else {
-          // b = b < 0 ? size + b : b < size ? b : size
-          b = b < size ? b : size
-        }
+        return new RangeIterator(node, a, b, c === 'desc')
       }
-      return new RangeIterator(root, a, b, c)
     }
     into(func) {
       return func(this)
