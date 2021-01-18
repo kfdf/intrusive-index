@@ -39,8 +39,8 @@ export interface IntrusiveIndex<T extends U, U = T> {
   delete(predicate: (a: U) => number): T | null
   deleteAt(pos: number): T | null
   get(key: U): T | null
-  getAny(predicate: (a: U) => number): T | null
-  getAt(pos: number, cache?: boolean | number): T | null
+  get(predicate: (a: U) => number): T | null
+  getAt(pos: number): T | null
   findRange<O extends RangeOption = 'full'>(predicate: (a: U) => number, option?: O): FullRange<T, O>
   findRange<O extends RangeOption = 'any'>(key: U, option?: O): FullRange<T, O>
   enumerate(start: number, end: number, order?: Order): IndexIterator<T>
@@ -50,6 +50,7 @@ export interface IntrusiveIndex<T extends U, U = T> {
     setNext(predicate: (a: U) => number): void
   }
   into<K>(func: (ii: IntrusiveIndex<T, U>) => K) : K
+  setRoot(root: T): void
 }
 export interface IndexConstructor {          
   new <T extends U, U = T>(comparator: (a: U, b: U) => number): IntrusiveIndex<T, U>

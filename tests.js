@@ -139,7 +139,6 @@ function testQueries(index, set) {
   let ref = [...set].sort((a, b) => a - b)
   for (let i = -2; i < ref.length + 2; i++) {
     let node = index.getAt(i)
-    assert(node === index.getAt(i, true))
     assert(ref[i] == (node ? node.value : null))
   }
   function getValue(i) {

@@ -451,10 +451,13 @@ export default function constructorFactory() {
     constructor(comp) {
       this.comp = comp
       this.root = { [l]: null, [r]: null, [d]: 1 }
-      this.cache = null
+      this.tempRoot = null
     }
     get size() {
       return this.root[d] >>> 2
+    }
+    setRoot(root) {
+      this.tempRoot = root
     }
     clear() {
       let { root } = this
@@ -467,9 +470,7 @@ export default function constructorFactory() {
       value[l] = null
       value[r] = null
       value[d] = 1
-      let added = addLeft(root, value, comp, false)
-      if (added) this.cache = null
-      return added
+      return !!addLeft(root, value, comp, false)
     }
     insert(value) {
       let { root, comp } = this
@@ -477,20 +478,17 @@ export default function constructorFactory() {
       value[r] = null
       value[d] = 1
       detachedNode = null
-      let added = addLeft(root, value, comp, true)
-      if (added) this.cache = null
+      addLeft(root, value, comp, true)
       return getDetached()
     }
     delete(value) {
       let { root, comp } = this
       detachedNode = null
-      let deleted
       if (typeof value === 'function') {
-        deleted = deleteLeft(root, undefined, value)
+        deleteLeft(root, undefined, value)
       } else {
-        deleted = deleteLeft(root, value, comp)
+        deleteLeft(root, value, comp)
       }
-      if (deleted) this.cache = null
       return getDetached()
     }
     deleteAt(pos) {
@@ -499,13 +497,12 @@ export default function constructorFactory() {
       if (pos < 0 || pos >= size) return null
       detachedNode = null
       deleteLeftAt(root, pos)
-      this.cache = null
       return getDetached()
     }
     get(value) {
-      let { root, comp } = this
+      let node = this.tempRoot || this.root[l]
+      let { comp } = this
       let isComp = typeof value === 'function'
-      let node = root[l]
       while (node) {
         let cmp = isComp? value(node) : comp(node, value)
         if (cmp < 0) node = node[r]
@@ -514,70 +511,24 @@ export default function constructorFactory() {
       }
       return null
     }  
-    getAt(pos, threshold) {
-      let { root, size } = this
-      if (pos < 0 || pos >= size) return null
-      if (threshold === undefined) {
-        let node = root[l]      
-        while (true) {
-          let size = node[d] >>> 2
-          if (pos < size) {
-            node = node[l]
-          } else if (pos > size) {
-            pos -= size + 1
-            node = node[r]
-          } else {
-            return node
-          }
-        }
-      } else {
-        let { cache } = this
-        let node, start, end
-        if (!cache) {
-          node = root[l]
-          start = 0
-          end = size          
-          this.cache = cache = {
-            start, end, node, prev: null, next: null
-          } 
+    getAt(pos) {
+      let node = this.tempRoot || this.root[l]      
+      while (node) {
+        let size = node[d] >>> 2
+        if (pos < size) {
+          node = node[l]
+        } else if (pos > size) {
+          pos -= size + 1
+          node = node[r]
         } else {
-          while (pos < cache.start || pos >= cache.end) {
-            cache = cache.next
-          }
-          ({ start, end, node } = cache)
-        }
-        while (true) {
-          let mid = (node[d] >>> 2) + start
-          if (pos < mid) {
-            node = node[l]
-            end = mid
-          } else if (pos > mid) {
-            start = mid + 1
-            node = node[r]
-          } else {
-            this.cache = cache
-            return node
-          }
-          if (end - start > threshold) {
-            let { prev } = cache
-            if (prev) {
-              cache = prev
-              cache.start = start
-              cache.end = end
-              cache.node = node               
-            } else {
-              cache = cache.prev = {
-                start, end, node, 
-                prev: null, next: cache,
-              }
-            }
-          }          
+          return node
         }
       }
+      return null
     } 
     findRange(value, option) {
-      let { comp, root } = this
-      let node = root[l]
+      let node = this.tempRoot || this.root[l]
+      let { comp } = this
       let isComp = typeof value === 'function'
       if (option === undefined) {
         option = isComp ? 'full' : 'any'
@@ -588,6 +539,7 @@ export default function constructorFactory() {
       let atStart = null
       let preEnd = null
       let atEnd = null
+      loop:
       while (node) {
         let cmp = isComp ? 
           value(node) : comp(node, value)
@@ -600,11 +552,11 @@ export default function constructorFactory() {
           let nodePos = end + (node[d] >>> 2)
           preStart = preEnd // !!
           if (option === 'any') {
-            return {
-              start: nodePos, end: nodePos + 1, 
-              preStart, atStart: node, 
-              preEnd: node, atEnd
-            }
+            start = nodePos
+            end = nodePos + 1
+            atStart = node
+            preEnd = node
+            break loop
           }
           start = nodePos
           atStart = node
@@ -625,11 +577,9 @@ export default function constructorFactory() {
               }
             }
             if (option === 'start') {
-              return {
-                start, end: nodePos + 1, 
-                preStart, atStart, 
-                preEnd: node, atEnd
-              }
+              end = nodePos + 1
+              preEnd = node
+              break loop
             }
           }
         }
@@ -648,8 +598,9 @@ export default function constructorFactory() {
         preEnd, atEnd 
       }
     } 
+
     enumerate(a, b, c) {
-      let node = this.root[l]
+      let node = this.tempRoot || this.root[l]
       if (typeof a === 'function') {
         return new PredicateIterator(node, a, b === 'desc')
       } else if (typeof a !== 'number') {

@@ -29,9 +29,8 @@ if (mega) {
         sum += rator2.current.value
       }       
       sum += ii.getAt(i).value
-      sum += ii.getAt(i, true).value
       sum += ii.get({ value: i }).value    
-      sum += ii.get(n => n.value - i, true).value    
+      sum += ii.get(n => n.value - i).value    
       sum += ii.findRange(n => n.value - i, 'any').atStart.value    
     }  
     if (i % 3 === 0) {
@@ -100,10 +99,11 @@ function run(values) {
   console.log(Date.now() - start, 'getAt', sum) 
   start = Date.now()
   sum = 0
-  for (let i = 0, len = ii.size; i < len; i++) {
-    sum += ii.getAt(values[i], true).value
+  for (let i = 0, len = values.length; i < len; i++) {
+    let value = values[i]
+    sum += ii.get({ value }).value
   }
-  console.log(Date.now() - start, 'getAt cache', sum)
+  console.log(Date.now() - start, 'get', sum)     
   start = Date.now()
   sum = 0
   for (let i = 0, len = values.length; i < len; i++) {
@@ -118,13 +118,6 @@ function run(values) {
     sum += ii.findRange(a => a.value - value, 'any').atStart.value
   }
   console.log(Date.now() - start, 'findRange', sum)  
-  start = Date.now()
-  sum = 0
-  for (let i = 0, len = values.length; i < len; i++) {
-    let value = values[i]
-    sum += ii.get({ value }).value
-  }
-  console.log(Date.now() - start, 'getValue', sum)   
   enumerateInChunks(ii, 1)
   enumerateInChunks(ii, 2)
   enumerateInChunks(ii, 3)
@@ -141,7 +134,7 @@ let ii = run(values)
 console.log('deleting at position 0...')
 let start = Date.now()
 for (let i = 0; i < values.length; i++) {
-  while (ii.size) ii.deleteAt(a => 0)
+  while (ii.size) ii.deleteAt(0)
 }
 console.log(Date.now() - start, 'size = ', ii.size)
 
