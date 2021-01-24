@@ -1,19 +1,25 @@
 export class IndexIterator<T> {
   moveNext(): boolean
   current: T | null
-  map<U>(transform: (value: T) => U): IndexIterator<U>
-  filter(predicate: (value: T) => boolean): IndexIterator<T>
-  flatten(): IndexIterator<T extends Iterable<infer U> ? U : T>
-  skipTake(skip: number, take?: number): IndexIterator<T>
-  fallback<U>(value: U) : IndexIterator<T> | IndexIterator<U>
+  next(): IteratorResult<T, undefined>
+  [Symbol.iterator](): IndexIterator<T>
+  static from<T>(iterable: Iterable<T>): IndexIterator<T>  
   into<U>(func: (generator: IndexIterator<T>) => U) : U
   toArray(): T[]
   forEach(callback: (value: T) => void): void
   reduce<U>(operation: (accum: U, value: T) => U, initial: U): U
   reduce(operation: (accum: T, value: T) => T): T
-  next(): IteratorResult<T, undefined>
-  [Symbol.iterator](): IndexIterator<T>
-  static from<T>(iterable: Iterable<T>): IndexIterator<T>
+  map<U>(transform: (value: T) => U): IndexIterator<U>
+  filter(predicate: (value: T) => boolean): IndexIterator<T>
+  flatten(): IndexIterator<T extends Iterable<infer U> ? U : T>
+  range(start: number, end?: number): IndexIterator<T>
+  fallback<U>(value: U) : IndexIterator<T> | IndexIterator<U>
+  concat(value: T): IndexIterator<T>
+  concat(value: Iterable<T>): IndexIterator<T>
+  sort(comparator: (a: T, b: T) => number): IndexIterator<T>
+  reverse(): IndexIterator<T>
+  segment(comparator: (a: T, b: T) => number): IndexIterator<IndexIterator<T>>
+  group(comparator: (a: T, b: T) => number): IndexIterator<IndexIterator<T>>
 }
 
 declare interface Range<T> {

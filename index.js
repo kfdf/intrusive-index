@@ -356,7 +356,7 @@ export default function constructorFactory() {
     }
     moveNext() {
       if (this.start++ >= this.end) {
-        this.current = null
+        this.current = undefined
         return false
       }
       let { nodes, current, reversed } = this
@@ -369,7 +369,7 @@ export default function constructorFactory() {
         }        
       }
       this.current = current = nodes.pop()
-      return !!current
+      return current !== undefined      
     }
   }
   class PredicateIterator extends IndexIterator {
@@ -394,7 +394,7 @@ export default function constructorFactory() {
     }
     setNext(predicate) {
       let { current, nodes, reversed } = this
-      this.current = null
+      this.current = undefined
       let dt, lt, rt
       if (reversed) dt = -1, lt = r, rt = l
       else dt = 1, lt = l, rt = r
@@ -444,7 +444,7 @@ export default function constructorFactory() {
         }
       }
       this.current = current = nodes.pop()
-      return !!current 
+      return current !== undefined
     }  
   }
   return class IntrusiveIndex {
@@ -493,7 +493,6 @@ export default function constructorFactory() {
     }
     deleteAt(pos) {
       let { root, size } = this
-      // if (pos < 0) pos = size + pos
       if (pos < 0 || pos >= size) return null
       detachedNode = null
       deleteLeftAt(root, pos)
@@ -509,7 +508,6 @@ export default function constructorFactory() {
         else if (cmp > 0) node = node[l]
         else if (cmp === 0) return node
       }
-      return null
     }  
     getAt(pos) {
       let node = this.tempRoot || this.root[l]      
@@ -524,7 +522,6 @@ export default function constructorFactory() {
           return node
         }
       }
-      return null
     } 
     findRange(value, option) {
       let node = this.tempRoot || this.root[l]
@@ -535,10 +532,10 @@ export default function constructorFactory() {
       }
       let end = 0
       let start = -1
-      let preStart = null
-      let atStart = null
-      let preEnd = null
-      let atEnd = null
+      let preStart = undefined
+      let atStart = undefined
+      let preEnd = undefined
+      let atEnd = undefined
       loop:
       while (node) {
         let cmp = isComp ? 
@@ -628,7 +625,7 @@ export default function constructorFactory() {
 
 export class IndexIterator {
   constructor() {
-    this.current = null
+    this.current = undefined
   }
   moveNext() {
     return false
@@ -650,11 +647,26 @@ export class IndexIterator {
   flatten() {
     return new FlattenIterator(this)
   }
-  skipTake(skip, take) {
-    return new SkipTakeIterator(this, skip, take)
+  range(start, end) {
+    return new RangeIterator(this, start, end)
   }
   fallback(value) {
     return new FallbackIterator(this, value)
+  }
+  segment(comparator) {
+    return new GroupsIterator(this, comparator)
+  }
+  sort(comparator) {
+    return new SortIterator(this, comparator)
+  }
+  reverse() {
+    return new ReverseIterator(this)
+  }
+  group(comparator) {
+    return this.sort(comparator).segment(comparator)
+  }
+  concat(value) {
+    return IndexIterator.from([this, value]).flatten()
   }
   into(func) {
     return func(this)
@@ -682,22 +694,25 @@ export class IndexIterator {
     return ret
   }
   static from(iterable) {
-    return new WrapperIterator(iterable)
+    if (iterable.moveNext) {
+      return iterable
+    } else {
+      return new WrapperIterator(iterable)
+    }
   }
 }
 
 class WrapperIterator extends IndexIterator {
   constructor(iterable) {
     super()
-    this.iterator = iterable[Symbol.iterator]()
-    this.done = false
+    this.rator = iterable[Symbol.iterator]()
   }
   moveNext() {
-    if (this.done) return false // extra safe
-    let { done, value } = this.iterator.next()
+    if (this.rator === null) return false
+    let { done, value } = this.rator.next()
     if (done) {
-      this.current = null
-      this.done = true
+      this.current = undefined
+      this.rator = null
       return false
     } else {
       this.current = value
@@ -715,7 +730,7 @@ class MapIterator extends IndexIterator {
   moveNext() {
     let { rator, transform } = this
     let ret = rator.moveNext()
-    this.current = ret ? transform(rator.current) : null
+    this.current = ret ? transform(rator.current) : undefined
     return ret
   }
 }
@@ -728,12 +743,11 @@ class FilterIterator extends IndexIterator {
   moveNext() {
     let { rator, predicate } = this
     while (rator.moveNext()) {
-      let { current } = rator
-      if (!predicate(current)) continue
-      this.current = current
+      if (!predicate(rator.current)) continue
+      this.current = rator.current
       return true
     }
-    this.current = null
+    this.current = undefined
     return false
   }
 }
@@ -745,41 +759,35 @@ class FlattenIterator extends IndexIterator {
   }
   moveNext() {
     while (true) {
-      let { inner } = this
-      if (inner) {
-        if (inner.moveNext()) {
-          this.current = inner.current
+      if (this.inner) {
+        if (this.inner.moveNext()) {
+          this.current = this.inner.current
           return true
         } else {
           this.inner = null
         }
       }
-      let { rator } = this
-      if (rator.moveNext()) {
-        let { current } = rator
-        if (Symbol.iterator in current) {
-          if (current.moveNext) { 
-            this.inner = current
-          } else {  
-            this.inner = new WrapperIterator(current)
-          }
+      if (this.rator.moveNext()) {
+        let { current } = this.rator
+        if (current[Symbol.iterator]) {
+          this.inner = IndexIterator.from(current)
         } else {
           this.current = current
           return true
         }
       } else {
-        this.current = null
+        this.current = undefined
         return false
       }
     }
   }
 }
-class SkipTakeIterator extends IndexIterator {
-  constructor(rator, start, length = -1) {
+class RangeIterator extends IndexIterator {
+  constructor(rator, start, end = Infinity) {
     super()
     this.rator = rator
-    this.start = Math.max(0, start)
-    this.length = length
+    this.start = start = Math.max(0, start)
+    this.length = Math.max(0, end - start)
   }  
   moveNext() {
     let { rator } = this
@@ -792,7 +800,7 @@ class SkipTakeIterator extends IndexIterator {
       this.current = rator.current
       return ret
     } 
-    this.current = null
+    this.current = undefined
     return false
   }
 }
@@ -812,6 +820,135 @@ class FallbackIterator extends IndexIterator {
     this.value = undefined
     this.current = rator.moveNext() ? rator.current : value
     return true
+  }
+}
+class BufferedIterator extends IndexIterator {
+  constructor(rator) {
+    super()
+    this.rator = rator
+    this.buffer = null
+    this.pos = 0
+  }
+  moveNext() {
+    let { buffer, pos } = this
+    if (buffer === null) {
+      this.init()
+      if ((buffer = this.buffer) === null) return false
+    }
+    if (pos < buffer.length) {
+      this.pos = pos + 1
+      this.current = buffer[pos]
+      buffer[pos] = undefined
+      return true
+    } 
+    this.current = undefined
+    this.buffer = null
+    this.rator = null
+    return false
+  }  
+  toArray() {
+    this.init()
+    let { buffer, pos } = this
+    if (buffer === null) return []
+    this.buffer = null
+    this.rator = null
+    if (pos > 0) buffer.splice(0, pos)
+    return buffer
+  } 
+}
+class GroupsIterator extends IndexIterator {
+  constructor(rator, comparator) {
+    super()
+    this.rator = rator
+    this.comparator = comparator
+  }
+  moveNext() {
+    let { current, rator, comparator } = this
+    let first = undefined
+    if (current) {
+      current.init()
+      first = current.first
+    } else if (rator.moveNext()) {
+      first = rator.current
+    }
+    if (first === undefined) {
+      this.current = undefined
+      return false
+    } else {
+      this.current = new GroupIterator(rator, comparator, first)
+      return true
+    }
+  }
+}
+class SortIterator extends BufferedIterator {
+  constructor(rator, comparator) {
+    super(rator)
+    this.comparator = comparator
+  }
+  init() {
+    if (this.buffer || !this.rator) return
+    this.buffer = this.rator
+      .toArray().sort(this.comparator)
+  }
+}
+class ReverseIterator extends BufferedIterator {
+  init() {
+    if (this.buffer || !this.rator) return
+    this.buffer = this.rator
+      .toArray().reverse()
+  }
+}
+class GroupIterator extends BufferedIterator {
+  constructor(rator, comparator, first) {
+    super(rator)
+    this.comparator = comparator
+    this.first = first   
+    // this.superMoveNext = BufferedIterator.prototype.moveNext 
+  }
+  init() {
+    if (this.buffer || !this.rator) return
+    let { current, rator } = this
+    let buffer = []
+    while (this.moveNext()) {
+      buffer.push(this.current)
+    }
+    this.current = current
+    this.rator = rator
+    this.buffer = buffer
+  }
+  moveNext() {
+    if (this.buffer !== null) {
+      // return super.moveNext()
+      // return this.superMoveNext()
+      let { buffer, pos } = this
+      if (pos < buffer.length) {
+        this.pos = pos + 1
+        this.current = buffer[pos]
+        buffer[pos] = undefined
+        return true
+      }
+      this.current = undefined
+      this.buffer = null
+      this.rator = null
+      return false
+    }
+    let { rator, comparator, first } = this
+    if (this.current !== undefined) {
+      let hasNext = rator.moveNext()
+      if (hasNext && comparator(first, rator.current) === 0) {
+        this.current = rator.current
+        return true
+      }
+      this.first = hasNext ? rator.current : undefined
+      this.rator = null
+      this.current = undefined
+      return false
+    } else if (rator !== null) {
+      this.current = this.first
+      return true
+    } else {
+      return false
+    }
   }
 }
 
