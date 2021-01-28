@@ -1,6 +1,6 @@
 export class IndexIterator<T> {
   moveNext(): boolean
-  current: T | null
+  current: T | undefined
   next(): IteratorResult<T, undefined>
   [Symbol.iterator](): IndexIterator<T>
   static from<T>(iterable: Iterable<T>): IndexIterator<T>  
@@ -12,7 +12,8 @@ export class IndexIterator<T> {
   map<U>(transform: (value: T) => U): IndexIterator<U>
   filter(predicate: (value: T) => boolean): IndexIterator<T>
   flatten(): IndexIterator<T extends Iterable<infer U> ? U : T>
-  range(start: number, end?: number): IndexIterator<T>
+  skip(count: number): IndexIterator<T>
+  take(count: number): IndexIterator<T>
   fallback<U>(value: U) : IndexIterator<T> | IndexIterator<U>
   concat(value: T): IndexIterator<T>
   concat(value: Iterable<T>): IndexIterator<T>
@@ -25,13 +26,13 @@ export class IndexIterator<T> {
 declare interface Range<T> {
   start: number
   end: number
-  atStart: T | null
-  preEnd: T | null
+  atStart: T | undefined
+  preEnd: T | undefined
 }
 declare type FullRange<T, O> = 
-  O extends 'full' ? Range<T> & { preStart: T | null; atEnd: T | null } :
-  O extends 'start' ? Range<T> & { preStart: T | null } :
-  O extends 'end' ? Range<T> & { atEnd: T | null } : Range<T>
+  O extends 'full' ? Range<T> & { preStart: T | undefined; atEnd: T | undefined } :
+  O extends 'start' ? Range<T> & { preStart: T | undefined } :
+  O extends 'end' ? Range<T> & { atEnd: T | undefined } : Range<T>
 
 declare type Order = 'asc' | 'desc'
 declare type RangeOption = 'any' | 'start' | 'end' | 'full'
@@ -40,13 +41,13 @@ export interface IntrusiveIndex<T extends U, U = T> {
   readonly size: number
   clear(): void
   add(value: T): boolean
-  insert(value: T): T | null
-  delete(key: U): T | null
-  delete(predicate: (a: U) => number): T | null
-  deleteAt(pos: number): T | null
-  get(key: U): T | null
-  get(predicate: (a: U) => number): T | null
-  getAt(pos: number): T | null
+  insert(value: T): T | undefined
+  delete(key: U): T | undefined
+  delete(predicate: (a: U) => number): T | undefined
+  deleteAt(pos: number): T | undefined
+  get(key: U): T | undefined
+  get(predicate: (a: U) => number): T | undefined
+  getAt(pos: number): T | undefined
   findRange<O extends RangeOption = 'full'>(predicate: (a: U) => number, option?: O): FullRange<T, O>
   findRange<O extends RangeOption = 'any'>(key: U, option?: O): FullRange<T, O>
   enumerate(start: number, end: number, order?: Order): IndexIterator<T>
@@ -81,10 +82,10 @@ export class Transaction {
     inserts: any[]
   }
   add<T>(index: IntrusiveIndex<T, any>, value: T): boolean
-  insert<T>(index: IntrusiveIndex<T, any>, value: T): T | null
-  delete<T extends U, U>(index: IntrusiveIndex<T, U>, predicate: (a: U) => number): T | null
-  delete<T extends U, U>(index: IntrusiveIndex<T, U>, key: U): T | null
-  deleteAt<T>(index: IntrusiveIndex<T, any>, pos: number): T | null
+  insert<T>(index: IntrusiveIndex<T, any>, value: T): T | undefined
+  delete<T extends U, U>(index: IntrusiveIndex<T, U>, predicate: (a: U) => number): T | undefined
+  delete<T extends U, U>(index: IntrusiveIndex<T, U>, key: U): T | undefined
+  deleteAt<T>(index: IntrusiveIndex<T, any>, pos: number): T | undefined
   savepoint(): void
   release(): void
   rollback(): boolean

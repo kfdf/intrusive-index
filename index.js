@@ -59,7 +59,7 @@ export default function constructorFactory() {
     curr[d] = diff - 1
     return (diff & 3) === 1 ? RESIZED : UPDATED
   }  
-  let detachedNode = null  
+  let detachedNode = undefined  
   function detachNode(target, repl) {
     detachedNode = target
     repl[l] = target[l]
@@ -73,7 +73,7 @@ export default function constructorFactory() {
     ret[l] = null
     ret[r] = null
     ret[d] = -1
-    detachedNode = null
+    detachedNode = undefined
     return ret
   }
   /** 
@@ -650,6 +650,13 @@ export class IndexIterator {
   range(start, end) {
     return new RangeIterator(this, start, end)
   }
+  skip(count) {
+    return new SkipIterator(this, count)
+  }
+  take(count) {
+    return new TakeIterator(this, count)
+  }
+
   fallback(value) {
     return new FallbackIterator(this, value)
   }
@@ -782,26 +789,39 @@ class FlattenIterator extends IndexIterator {
     }
   }
 }
-class RangeIterator extends IndexIterator {
-  constructor(rator, start, end = Infinity) {
+class SkipIterator extends IndexIterator {
+  constructor(rator, count) {
     super()
     this.rator = rator
-    this.start = start = Math.max(0, start)
-    this.length = Math.max(0, end - start)
+    this.count = Math.max(0, count)
   }  
   moveNext() {
     let { rator } = this
-    while (this.start && rator.moveNext()) {
-      this.start--
+    while (this.count !== 0) {
+      this.count--
+      if (!rator.moveNext()) return false
     }
-    if (this.length) {
-      this.length--
-      let ret = rator.moveNext()
-      this.current = rator.current
-      return ret
-    } 
-    this.current = undefined
-    return false
+    let ret = rator.moveNext()
+    this.current = rator.current
+    return ret
+  }
+}
+class TakeIterator extends IndexIterator {
+  constructor(rator, count) {
+    super()
+    this.rator = rator
+    this.count = Math.max(0, count)
+  }  
+  moveNext() {
+    let { rator } = this
+    if (this.count === 0) {
+      this.current = undefined
+      return false
+    }
+    this.count--
+    let ret = rator.moveNext()
+    this.current = rator.current
+    return ret
   }
 }
 class FallbackIterator extends IndexIterator {
