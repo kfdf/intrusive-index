@@ -112,7 +112,7 @@ export default function constructorFactory() {
     let left = curr[l]
     let size = left[d] >>> 2
     /** @type {1|2|3} */
-    let result
+    let result = UNCHANGED
     if (size > pos) {
       result = deleteLeftAt(left, pos)
     } else if (size < pos) {
@@ -148,7 +148,7 @@ export default function constructorFactory() {
     let right = curr[r]
     let size = right[d] >>> 2
     /** @type {1|2|3} */
-    let result
+    let result = UNCHANGED
     if (size > pos) {
       result = deleteLeftAt(right, pos)
     } else if (size < pos) {
@@ -171,7 +171,7 @@ export default function constructorFactory() {
     if (right == null) return UNCHANGED  
     let cmp = value === undefined ? comp(right) : comp(right, value)
     /** @type {0|1|2|3} */
-    let result
+    let result = UNCHANGED
     if (cmp > 0) {
       result = deleteLeft(right, value, comp)
     } else if (cmp < 0) {
@@ -270,8 +270,9 @@ export default function constructorFactory() {
   // |x| |x|           |1| |x| |x|    
   // |1|                              
       let left = node[l]
-      let leftSize = left[d] & ~3
-      let diff = left[d] & 3
+      let leftD = left[d]
+      let leftSize = leftD & ~3
+      let diff = leftD & 3
       if (diff <= 1) {
         if (diff === 0) {
           left[d] = leftSize | 1
@@ -507,6 +508,7 @@ export default function constructorFactory() {
         if (cmp < 0) node = node[r]
         else if (cmp > 0) node = node[l]
         else if (cmp === 0) return node
+        else break
       }
     }  
     getAt(pos) {
