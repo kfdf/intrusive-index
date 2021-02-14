@@ -41,10 +41,10 @@ export interface IntrusiveIndex<T extends U, U = T> {
   readonly size: number
   clear(): void
   add(value: T): boolean
-  insert(value: T): T | undefined
-  delete(key: U): T | undefined
-  delete(predicate: (a: U) => number): T | undefined
-  deleteAt(pos: number): T | undefined
+  insert(value: T): T | null
+  delete(key: U): T | null
+  delete(predicate: (a: U) => number): T | null
+  deleteAt(pos: number): T | null
   get(key: U): T | undefined
   get(predicate: (a: U) => number): T | undefined
   getAt(pos: number): T | undefined
@@ -74,7 +74,7 @@ export const IIE: IndexConstructor
 export const IIF: IndexConstructor
 
 export function createFactory(): () => IndexConstructor
-export class Transaction {
+export class TransactionBase {
   readonly journal: {
     savepoints: number[]
     indexes: IntrusiveIndex<any>[]

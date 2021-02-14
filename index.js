@@ -59,7 +59,7 @@ export default function constructorFactory() {
     curr[d] = diff - 1
     return (diff & 3) === 1 ? RESIZED : UPDATED
   }  
-  let detachedNode = undefined  
+  let detachedNode = null  
   function detachNode(target, repl) {
     detachedNode = target
     repl[l] = target[l]
@@ -73,7 +73,7 @@ export default function constructorFactory() {
     ret[l] = null
     ret[r] = null
     ret[d] = -1
-    detachedNode = undefined
+    detachedNode = null
     return ret
   }
   /** 
@@ -658,7 +658,6 @@ export class IndexIterator {
   take(count) {
     return new TakeIterator(this, count)
   }
-
   fallback(value) {
     return new FallbackIterator(this, value)
   }
@@ -992,7 +991,7 @@ export function createFactory() {
   return () => factory(IndexIterator)  
 }
 
-export class Transaction {
+export class TransactionBase {
   constructor() {
     this.journal = {
       savepoints: [],
