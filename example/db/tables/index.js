@@ -1,0 +1,8 @@
+export * as location from './location.js'
+export * as title from './title.js'
+export * as species from './species.js'
+export * as appearance from './appearance.js'
+export * as relationship from './relationship.js'
+export * as game from './game.js'
+export * as character from './character.js'
+export * as setting from './setting.js'

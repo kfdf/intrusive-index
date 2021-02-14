@@ -1,0 +1,17 @@
+{
+  "name": "web-touhou",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "compact": "node compact.js",
+    "start": "node ."
+  },
+  "keywords": [],
+  "author": "",
+  "dependencies": {
+    "express": "^4.17.1",
+    "formidable": "^1.2.2"
+  }
+}
