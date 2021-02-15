@@ -1,5 +1,5 @@
-import { IIA, IIB } from 'intrusive-index'
-import { addRow, DbError, deleteRow, getDeleted, getReplaced, replaceRow, verifyFk } from '../dml-helpers.js'
+import { IIA, IIB } from '../intrusive-index.js'
+import { deleteRow, getDeleted, replaceRow, verifyFk } from '../dml-helpers.js'
 import * as db from '../index.js'
 import { numberType } from '../type-hints.js'
 
@@ -19,7 +19,7 @@ export const fileName = 'settings'
 
 /**
 @template K
-@typedef {import('intrusive-index').IntrusiveIndex<Row, Pick<Row, K>>} SettingIndex<K> */
+@typedef {import('../intrusive-index.js').IntrusiveIndex<Row, Pick<Row, K>>} SettingIndex<K> */
 
 /** @type {SettingIndex<'locationId' | 'gameId'>} */
 export const pk = new IIA((a, b) => 

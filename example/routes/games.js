@@ -1,10 +1,9 @@
 import express from 'express'
-import { pageSize } from '../config.js'
 import * as db from '../db/index.js'
 import { render, html } from './shared/render.js'
 import { paginator, detailsLayoutRoot, listLayoutRoot, gotoLinkRoot, verticalStackRoot, newLinesRoot } from './shared/common.js'
 import { formatDate } from './shared/helpers.js'
-import { countPages, enumeratePage, pageOf, sortBy } from '../db/query-helpers.js'
+import { countPages, enumeratePage, pageOf } from '../db/query-helpers.js'
 
 let games = express.Router()
 games.get('/', 
@@ -32,7 +31,7 @@ games.get('/:id',
       .toArray()
     let characters = db.appearance.gameFk
       .enumerate(a => db.game.pk.comp(a, game))
-      .into(sortBy(a => a.order))
+      .sort((a, b) => a.order - b.order)
       .map(a => { 
         let role = a.description
         let char = db.character.pk.get(a)

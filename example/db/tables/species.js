@@ -1,4 +1,4 @@
-import { IIA, IIB } from 'intrusive-index'
+import { IIA, IIB } from '../intrusive-index.js'
 import { compareStringsIgnoreCase } from '../comparators.js'
 import { addRow, deleteRow, enumerateSafely, getDeleted, getReplaced, replaceRow } from '../dml-helpers.js'
 import * as db from '../index.js'
@@ -19,7 +19,7 @@ export const fileName = 'species'
 
 /**
 @template K
-@typedef {import('intrusive-index').IntrusiveIndex<Row, Pick<Row, K>>} SpeciesIndex */
+@typedef {import('../intrusive-index.js').IntrusiveIndex<Row, Pick<Row, K>>} SpeciesIndex */
 
 /** @type {SpeciesIndex<'speciesId'>} */
 export const pk = new IIA((a, b) => 

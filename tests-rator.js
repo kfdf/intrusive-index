@@ -1,41 +1,6 @@
 // @ts-check
 import { IndexIterator, IIA, IIB, IIC } from './index.js'
 
-/**
-@template T
-@template U
-@param {(item: T) => U} selector
-@returns {(rator: IndexIterator<T>) => IndexIterator<[U, T[]]>}  */
-function groups(selector) {
-  return rator => {
-    let ret = new Map()
-    for (let item of rator) {
-      let key = selector(item)
-      let arr = ret.get(key) || []
-      arr.push(item)
-      ret.set(key, arr)
-    }
-    return IndexIterator.from(ret)
-  }
-}
-/**
-@template T
-@param {(a: T, b: T) => number} comparator
-@returns {(rator: IndexIterator<T>) => IndexIterator<T>}  */
-function ordered(comparator) {
-  return rator => IndexIterator
-    .from(rator.toArray().sort(comparator))
-}
-/**
-@template T
-@param {T} value
-@returns {(rator: IndexIterator<T>) => IndexIterator<T>}  */
-function concat(value) {
-  // @ts-ignore
-  return rator => IndexIterator
-    .from([rator, value])
-    .flatten()
-}
 function Department(parentId, name) {
   this.depId = parentId
   this.name = name
@@ -88,27 +53,25 @@ for (let emp of empPk.enumerate()) {
   empDepFk.add(emp)
   empManagerIx.add(emp)
 }
-let nullEmp = new Employee(0, 0, '<no employees>', 0)
 let rows = depPk
   .enumerate()
   .map(dep => empDepFk
     .enumerate(a => depPk.comp(a, dep))
-    .fallback(nullEmp)
+    .fallback(/** @type{Employee}*/(null))
     .map(emp => ({ emp, dep })))
   .flatten()
-  .map(({ emp, dep }) => dep.name + ': ' + emp.name)
+  .map(a => a.dep.name + ': ' + (a.emp ? a.emp.name : '--'))
 console.log(rows.toArray())
 
 let largestSalaries = depPk
   .enumerate()
-  .map(dep => ({
-    dep,
-    emp: empDepFk
+  .map(dep => {
+    let emp = empDepFk
       .enumerate(a => depPk.comp(a, dep))
-      .fallback(nullEmp)
       .reduce((max, emp) => emp.salary > max.salary ? emp : max)
-  }))
-  .map(a => a.dep.name + ': ' + a.emp.name + ' ' + a.emp.salary)
+    return { dep, emp }
+  })
+  .map(a => a.dep.name + ': ' + (a.emp ? a.emp.name + ' ' + a.emp.salary : '--'))
   .toArray()
 console.log(largestSalaries)
 
@@ -132,7 +95,7 @@ function getEmplsFlat(manager) {
     .enumerate(e => e.manager - manager.empId)
     .map(getEmplsFlat)
     .flatten()
-    .into(concat(manager))
+    .concat(manager)
 }
 getEmplsFlat(empPk.getAt(0))
   .map(emp => emp.name)
@@ -153,11 +116,23 @@ function getEmplsImper(manager) {
 }
 console.log(getEmplsImper(empPk.getAt(0)).map(e => e.name))
 
+function by(selector) {
+  return (a, b) => {
+    let av = selector(a)
+    let bv = selector(b)
+    return av > bv ? 1 : av < bv ? -1 : 0
+  }
+}
 let salaries = empPk
   .enumerate()
-  .into(groups(e => e.salary / 100 | 0))
-  .into(ordered((a, b) => a[0] - b[0]))
-  .map(([h, list]) => `${h}XX: ${list.length} employees`)
+  .group(by(a => a.salary / 100 | 0))
+  .map(g => {
+    let h = g.next().value.salary / 100 | 0
+    let length = g.reduce((a, e) => a + 1, 1)
+    return { h, length }
+  })
+  // .sort(by(a => a.h)) already sorted by the group call above
+  .map(a => `${a.h}XX: ${a.length} employees`)
   .toArray()
 console.log(salaries)
 

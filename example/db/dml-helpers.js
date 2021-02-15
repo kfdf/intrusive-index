@@ -1,10 +1,10 @@
-import { IndexIterator } from 'intrusive-index'
+import { IndexIterator } from './intrusive-index.js'
 import { Transaction } from './index.js'
 
 /** 
 @template T
 @template U
-@typedef {import('intrusive-index').IntrusiveIndex<T, U>} IntrusiveIndex */
+@typedef {import('./intrusive-index.js').IntrusiveIndex<T, U>} IntrusiveIndex */
 
 /** */       
 export class DbError extends Error {

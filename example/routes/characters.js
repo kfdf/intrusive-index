@@ -1,6 +1,6 @@
 import express from 'express'
 import * as db from '../db/index.js'
-import { countPages, enumeratePage, keyedGroups, sortBy } from '../db/query-helpers.js'
+import { by, countPages, enumeratePage } from '../db/query-helpers.js'
 import { pageSize } from '../config.js'
 import { render, html } from './shared/render.js'
 import { paginator, detailsLayoutRoot, gotoLinkRoot, listLayoutRoot, verticalStackRoot, newLinesRoot } from './shared/common.js'
@@ -42,14 +42,27 @@ characters.get('/:id',
         game: db.game.pk.get(row),
         description: row.description,
       }))
+      .sort(by(a => a.game.date))
       .toArray()
     let titles  = db.title.charNameIx
       .enumerate(a => db.character.pk.comp(a, char))
-      .map(title => ({ title, game: db.game.pk.get(title) }))
-      .group((a, b) => db.title.nameComp(a.title, b.title))
-      .into(keyedGroups(a => a.title.name, a => a.game))
-      .map(a => (a.values.sort((a, b) => +a.date - +b.date), a))
-      .into(sortBy(a => a.values.length ? +a.values[0].date : 0))
+      .map(title => {
+        let game = db.game.pk.get(title)
+        return { game, title }
+      })
+      // already sorted by name, so `segment` instead of `group`
+      .segment((a, b) => db.title.nameComp(a.title, b.title))
+      .map((iitg, i) => {
+        let title 
+        let games = iitg
+          .map(a => (title = title || a.title.name, a.game))
+          .filter(g => !!g)
+          .sort(by(g => g.date))
+          .toArray()
+        let date = games.length ? +games[0].date : 0
+        return { title, games, date, i }
+      })
+      .sort((a, b) => a.date - b.date || a.i - b.i)
       .toArray()
     
     render(res, detailsView, {
@@ -94,15 +107,15 @@ function* detailsView({
       yield html`
       <h3>Titles</h3>
       <ul class=${verticalStackRoot}>`
-      for (let { key, values } of titles) {
+      for (let { title, games } of titles) {
         yield html`
         <li><span>
-        ${key}`
-        if (values.length) {
+        ${title}`
+        if (games.length) {
           yield html` (`
-          for (let i = 0; i < values.length; i++) {
-            let game = values[i]
-            if (i) yield html`, `
+          let first = true
+          for (let game of games) {
+            first ? first = false : yield html`, `
             yield html`<a href="/games/${game.gameId}">${
               game.shortName
             }</a>`            

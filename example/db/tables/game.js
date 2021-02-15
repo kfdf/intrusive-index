@@ -1,4 +1,4 @@
-import { IIA, IIB, IIC } from 'intrusive-index'
+import { IIA, IIB, IIC } from '../intrusive-index.js'
 import { createMerger, addRow, deleteRow, getReplaced, replaceRow, getDeleted, verifyFk, enumerateSafely } from '../dml-helpers.js'
 import * as db from '../index.js'
 import { numberType, stringType, dateType, nullableStringType } from '../type-hints.js'
@@ -28,7 +28,7 @@ export const fileName = 'games'
 const mergeInto = createMerger(new Row(), keyLength)
 /**
 @template K
-@typedef {import('intrusive-index').IntrusiveIndex<Row, Pick<Row, K>>} GameIndex<K> */
+@typedef {import('../intrusive-index.js').IntrusiveIndex<Row, Pick<Row, K>>} GameIndex<K> */
 
 /** @type {GameIndex<'gameId'>} */
 export const pk = new IIA((a, b) => 

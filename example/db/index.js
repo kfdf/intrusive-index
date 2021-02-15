@@ -1,8 +1,7 @@
 import * as tables from './tables/index.js'
 import * as images from './views/images.js'
 import { loadTable, addToSaveQueue, listImages } from './storage.js'
-import { TransactionBase, IIA, IIB, IIC, IID, IIE, IIF } from 'intrusive-index'
-import { DbError } from './dml-helpers.js'
+import { TransactionBase, IIA, IIB, IIC, IID, IIE, IIF } from './intrusive-index.js'
 export * from './tables/index.js'
 export * from './views/index.js'
 

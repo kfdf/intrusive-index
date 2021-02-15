@@ -1,4 +1,4 @@
-import { IIA, IIB, IIC, IID } from 'intrusive-index'
+import { IIA, IIB, IIC, IID } from '../intrusive-index.js'
 import { compareStringsIgnoreCase } from '../comparators.js'
 import { createMerger, addRow, deleteRow, getReplaced, replaceRow, getDeleted, verifyFk } from '../dml-helpers.js'
 import { nullableNumberType, numberType, stringType } from '../type-hints.js'
@@ -30,7 +30,7 @@ export function nameComp(a, b) {
 }
 /**
 @template K
-@typedef {import('intrusive-index').IntrusiveIndex<Row, Pick<Row, K>>} TitleIndex */
+@typedef {import('../intrusive-index.js').IntrusiveIndex<Row, Pick<Row, K>>} TitleIndex */
 
 /** @type {TitleIndex<'titleId'>} */
 export const pk = new IIA((a, b) => 

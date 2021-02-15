@@ -1,6 +1,6 @@
 import express from 'express'
 import * as db from '../db/index.js'
-import { enumeratePage, pageOf, countPages, sortBy } from '../db/query-helpers.js'
+import { enumeratePage, pageOf, countPages } from '../db/query-helpers.js'
 import { deleteView, editLayout, formRoot, operationsRoot, paginator } from './shared/common.js'
 import { getGame } from './edit-games.js'
 import { html, render } from './shared/render.js'
@@ -41,7 +41,7 @@ characters.get('/',
     let { game } = res.locals
     let characters = db.appearance.gameFk
       .enumerate(a => db.game.pk.comp(a, game))
-      .into(sortBy(a => a.order))
+      .sort((a, b) => a.order - b.order)
       .map(appearance => {
         let character = db.character.pk.get(appearance)
         return { character, appearance }

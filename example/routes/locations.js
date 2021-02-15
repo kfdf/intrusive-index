@@ -2,7 +2,7 @@ import express from 'express'
 import { detailsLayoutRoot, gotoLinkRoot, listLayoutRoot, paginator, verticalStackRoot } from './shared/common.js'
 import { html, render } from './shared/render.js'
 import * as db from '../db/index.js'
-import { countPages, enumeratePage, pageOf, sortBy } from '../db/query-helpers.js'
+import { by, countPages, enumeratePage, pageOf } from '../db/query-helpers.js'
 
 let locations = express.Router()
 
@@ -27,12 +27,12 @@ locations.get('/:locId',
     let page = db.location.nameUx.into(pageOf(location))
     let characters = db.character.locationFk
       .enumerate(a => db.location.pk.comp(a, location))
-      .into(sortBy(ch => ch.name))
+      .sort(by(ch => ch.name))
       .toArray()
     let games = db.setting.pk
       .enumerate(a => db.location.pk.comp(a, location))
       .map(s => db.game.pk.get(s))
-      .into(sortBy(game => game.date))
+      .sort(by(game => game.date))
       .toArray()
     render(res, detailsView, {
       title: location.name,

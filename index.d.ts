@@ -6,11 +6,11 @@ export class IndexIterator<T> {
   static from<T>(iterable: Iterable<T>): IndexIterator<T>  
   into<U>(func: (generator: IndexIterator<T>) => U) : U
   toArray(): T[]
-  forEach(callback: (value: T) => void): void
-  reduce<U>(operation: (accum: U, value: T) => U, initial: U): U
-  reduce(operation: (accum: T, value: T) => T): T
-  map<U>(transform: (value: T) => U): IndexIterator<U>
-  filter(predicate: (value: T) => boolean): IndexIterator<T>
+  forEach(callback: (value: T, i: number) => void): void
+  reduce<U>(operation: (accum: U, value: T, i: number) => U, initial: U): U
+  reduce(operation: (accum: T, value: T, i: number) => T): T
+  map<U>(transform: (value: T, i: number) => U): IndexIterator<U>
+  filter(predicate: (value: T, i: number) => boolean): IndexIterator<T>
   flatten(): IndexIterator<T extends Iterable<infer U> ? U : T>
   skip(count: number): IndexIterator<T>
   take(count: number): IndexIterator<T>

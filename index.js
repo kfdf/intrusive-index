@@ -680,18 +680,21 @@ export class IndexIterator {
     return func(this)
   }
   reduce(callback, value) {
+    let offset = 0
     if (value === undefined) {
-      this.moveNext()
+      if (!this.moveNext()) return undefined
+      offset++
       value = this.current
     }
     while (this.moveNext()) {
-      value = callback(value, this.current)
+      value = callback(value, this.current, offset++)
     }
     return value
   }
   forEach(callback) {
+    let offset = 0
     while (this.moveNext()) {
-      callback(this.current)
+      callback(this.current, offset++)
     }
   }
   toArray() {
@@ -734,12 +737,17 @@ class MapIterator extends IndexIterator {
     super()
     this.rator = rator
     this.transform = transform
+    this.offset = 0
   }
   moveNext() {
     let { rator, transform } = this
-    let ret = rator.moveNext()
-    this.current = ret ? transform(rator.current) : undefined
-    return ret
+    if (rator.moveNext()) {
+      this.current = transform(rator.current, this.offset++)
+      return true
+    } else {
+      this.current = undefined
+      return false
+    }
   }
 }
 class FilterIterator extends IndexIterator {
@@ -747,11 +755,12 @@ class FilterIterator extends IndexIterator {
     super()
     this.rator = rator
     this.predicate = predicate
+    this.offset = 0
   }
   moveNext() {
     let { rator, predicate } = this
     while (rator.moveNext()) {
-      if (!predicate(rator.current)) continue
+      if (!predicate(rator.current, this.offset++)) continue
       this.current = rator.current
       return true
     }

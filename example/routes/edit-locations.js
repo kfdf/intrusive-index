@@ -12,6 +12,16 @@ locations.get('/',
     let page = +req.query.page || 1
     let locations = db.location.nameUx
       .into(enumeratePage(page))
+      .map(location => {
+        let pred = a => db.location.pk.comp(a, location)
+        let chr = db.character.locationFk.findRange(pred)
+        let gr = db.setting.pk.findRange(pred)
+        return { 
+          location, 
+          charCount: chr.end - chr.start,
+          gameCount: gr.end - gr.start
+        }
+      })
       .toArray()
     let pageCount = db.location.nameUx.into(countPages())
     render(res, indexView, {
@@ -63,10 +73,9 @@ locations.get('/:id',
   function (req, res) {
     let { location } = res.locals
     let page = db.location.nameUx.into(pageOf(location))
-    let chr = db.character.locationFk
-      .findRange(a => db.location.pk.comp(a, location))
-    let gr = db.setting.pk
-      .findRange(a => db.location.pk.comp(a, location))      
+    let pred = a => db.location.pk.comp(a, location)
+    let chr = db.character.locationFk.findRange(pred)
+    let gr = db.setting.pk.findRange(pred)      
     render(res, detailsView, {
       title: 'Location',
       charCount: chr.end - chr.start,
@@ -176,11 +185,12 @@ function* indexView({ title, locations, pageCount, page }) {
   yield* paginator({ pageCount, page })
   yield html`
   <ul>`
-  for (let loc of locations) {
+  for (let { location, gameCount, charCount } of locations) {
     yield html`
-    <li><a href="/edit/locations/${loc.locationId}">
-      ${loc.name}
-    </a></li>`
+    <li><a href="/edit/locations/${location.locationId}">
+      ${location.name
+    }</a> - g: ${gameCount}, ch: ${charCount}
+    </li>`
   }
   yield html`
   </ul>`

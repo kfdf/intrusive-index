@@ -1,4 +1,4 @@
-import { IIA } from 'intrusive-index'
+import { IIA } from '../intrusive-index.js'
 import { addRow, getDeleted, getReplaced, verifyFk, verifyFkComp } from '../dml-helpers.js'
 import { numberType, stringType } from '../type-hints.js'
 import * as db from '../index.js'
@@ -20,7 +20,7 @@ export const fileName = 'relationships'
 
 /**
 @template K
-@typedef {import('intrusive-index').IntrusiveIndex<Row, Pick<Row, K>>} RelationshipIndex<K> */
+@typedef {import('../intrusive-index.js').IntrusiveIndex<Row, Pick<Row, K>>} RelationshipIndex<K> */
 
 /** @type {RelationshipIndex<'characterId' | 'otherCharacterId'>} */
 export const pk = new IIA((a, b) => 

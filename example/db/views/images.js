@@ -1,8 +1,8 @@
-import { IIA } from 'intrusive-index'
+import { IIA } from '../intrusive-index.js'
 import * as db from '../index.js'
 import { compareStrings } from '../comparators.js'
 import { createMerger, addRow, getReplaced, getDeleted, DbError } from '../dml-helpers.js'
-import { booleanType, numberType, stringType } from '../type-hints.js'
+import { booleanType, stringType } from '../type-hints.js'
 
 export function Row({
   imageId = stringType,

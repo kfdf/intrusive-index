@@ -1,4 +1,4 @@
-import { IIA, IIB } from 'intrusive-index'
+import { IIA, IIB } from '../intrusive-index.js'
 import { addRow, deleteRow, getDeleted, getReplaced, replaceRow, verifyFk } from '../dml-helpers.js'
 import { numberType, stringType } from '../type-hints.js'
 import * as db from '../index.js'
@@ -21,7 +21,7 @@ export const keyLength = 2
 export const fileName = 'appearances'
 /**
 @template K
-@typedef {import('intrusive-index').IntrusiveIndex<Row, Pick<Row, K>>} AppearanceIndex<K> */
+@typedef {import('../intrusive-index.js').IntrusiveIndex<Row, Pick<Row, K>>} AppearanceIndex<K> */
 
 /** @type {AppearanceIndex<'characterId' | 'gameId'>} */
 export const pk = new IIA((a, b) => 

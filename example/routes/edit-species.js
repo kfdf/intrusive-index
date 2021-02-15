@@ -27,6 +27,11 @@ species.get('/',
     let page = +req.query.page || 1
     let species = db.species.nameUx
       .into(enumeratePage(page))
+      .map(sp => {
+        let chr = db.character.speciesFk
+          .findRange(a => db.species.pk.comp(a, sp))
+        return { sp, charCount: chr.end - chr.start }
+      })
       .toArray()
     let pageCount = db.species.nameUx.into(countPages())
     render(res, indexView, {
@@ -208,11 +213,13 @@ function* indexView({ title, species, page, pageCount }) {
   yield* paginator({ page, pageCount })
   yield html`
   <ul>`
-  for (let sp of species) {
+  for (let { sp, charCount } of species) {
     yield html`
-    <li><a href="/edit/species/${sp.speciesId}">
-      ${sp.name}
-    </a></li>`
+    <li>
+      <a href="/edit/species/${sp.speciesId}">
+        ${sp.name
+      }</a> - ch: ${charCount}
+    </li>`
   }
   yield html`
   </ul>`

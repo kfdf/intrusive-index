@@ -1,4 +1,4 @@
-import { IIA, IIB, IIC, IID, IIE } from 'intrusive-index'
+import { IIA, IIB, IIC, IID, IIE } from '../intrusive-index.js'
 import { compareStringsIgnoreCase } from '../comparators.js'
 import { createMerger, addRow, deleteRow, getReplaced, replaceRow, getDeleted, verifyFk, enumerateSafely } from '../dml-helpers.js'
 import * as db from '../index.js'
@@ -34,7 +34,7 @@ export const fileName = 'characters'
 const mergeInto = createMerger(new Row(), keyLength)
 /**
 @template K
-@typedef {import('intrusive-index').IntrusiveIndex<Row, Pick<Row, K>>} CharacterIndex<K> */
+@typedef {import('../intrusive-index.js').IntrusiveIndex<Row, Pick<Row, K>>} CharacterIndex<K> */
 
 /** @type {CharacterIndex<'characterId'>} */
 export const pk = new IIA((a, b) => 
@@ -45,9 +45,10 @@ export const locationFk = new IIB((a, b) =>
   db.location.pk.comp(a, b) ||
   pk.comp(a, b))
 
-/** @type {CharacterIndex<'speciesId' | 'characterId'>} */
+/** @type {CharacterIndex<'speciesId' | 'characterId' | 'name'>} */
 export const speciesFk = new IIC((a, b) => 
   db.species.pk.comp(a, b) ||
+  compareStringsIgnoreCase(a.name, b.name) ||
   pk.comp(a, b))
 
 /** @type {CharacterIndex<'name'>} */
