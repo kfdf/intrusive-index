@@ -1,8 +1,7 @@
 import { IIA, IIB, IIC } from '../intrusive-index.js'
-import { createMerger, addRow, deleteRow, getReplaced, replaceRow, getDeleted, verifyFk, enumerateSafely } from '../dml-helpers.js'
+import { createMerger, addRow, deleteRow, getReplaced, replaceRow, getDeleted, verifyFk, batches } from '../dml-helpers.js'
 import * as db from '../index.js'
 import { numberType, stringType, dateType, nullableStringType } from '../type-hints.js'
-import { verifyUnlocked } from '../views/images.js'
 
 export function Row({ 
   gameId = numberType, 
@@ -66,14 +65,11 @@ export function update(tr, values) {
   mergeInto(row, old)
   if (row.imageId) {
     let image = verifyFk(db.image.pk, row, old)
-    if (image) verifyUnlocked(image)
+    if (image) db.image.verifyUnlocked(image)
   }
+  db.image.updateRefCounts(tr, row, old)
   replaceRow(tr, imageFk, row, old, true)
   replaceRow(tr, dateIx, row, old, true)
-  // if (row.imageId !== old.imageId) {
-  //   db.image.incRef(tr, row.imageId)
-  //   db.image.decRef(tr, old.imageId)
-  // }
   return row
 }
 /**
@@ -81,15 +77,16 @@ export function update(tr, values) {
 @param {Pick<Row, 'gameId'>} key */
 export function remove(tr, key) {
   let row = getDeleted(tr, pk, key)
+  db.image.updateRefCounts(tr, null, row)
   db.appearance.gameFk
-    .into(enumerateSafely(a => pk.comp(a, row)))
+    .into(batches(a => pk.comp(a, row)))
     .forEach(a => db.appearance.remove(tr, a))
   db.title.gameFk
-    .into(enumerateSafely(a => pk.comp(a, row)))
+    .into(batches(a => pk.comp(a, row)))
     .forEach(({ titleId }) => {
       db.title.update(tr, { titleId, gameId: null })
     })
+  db.settingDen.updateGame(tr, row)
   deleteRow(tr, imageFk, row, true)
   deleteRow(tr, dateIx, row, true)
-  // db.image.decRef(tr, row.imageId)
 }

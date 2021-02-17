@@ -14,10 +14,10 @@ characters.use('/:charId/relationships', relationships)
 function beginPostHandling(req, res, next) {
   validate(req, res)
     .string('name', 'Name', { minLength: 1 })
-    .string('age', 'Age', { minLength: 1 })
-    .string('occupation', 'Occupation', { minLength: 1 })
-    .string('abilities', 'Abilities', { minLength: 1 })
-    .string('description', 'Description', { minLength: 1 })
+    .string('age', 'Age')
+    .string('occupation', 'Occupation')
+    .string('abilities', 'Abilities')
+    .string('description', 'Description')
   for (let _ in res.locals.errors) throw 'rerender'
   next()
 }

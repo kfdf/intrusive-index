@@ -149,16 +149,28 @@ export const imageListRoot = css`
 & .${figureRoot} {
   max-width: calc(50% - 10px);
 }
+& .${figureRoot} figcaption {
+  position: relative;
+}
 & .${figureRoot} .overlay {
   position: absolute;
   top: 0;
+  left: 0;
   right: 0;
-  padding: 10px;
+  bottom: 0;
+  transform: translateY(calc(100% + 5px));
   transition: transform 0.3s;
-  transform: translateY(-100%);
+}
+& .${figureRoot} .overlay a {
+  position: absolute;
+  transform: translate(-50%);
+  transition: transform 0.3s;
 }
 & .${figureRoot}:hover .overlay {
- transform: none;
+  transform: none;
+}
+& .${figureRoot}:hover .overlay a {
+  transform: translate(-50%, calc(-100% - 5px));
 }
 & .${figureRoot} .overlay a {
   border: 1px solid gray;

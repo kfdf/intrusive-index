@@ -1,9 +1,8 @@
 import { IIA, IIB, IIC, IID, IIE } from '../intrusive-index.js'
 import { compareStringsIgnoreCase } from '../comparators.js'
-import { createMerger, addRow, deleteRow, getReplaced, replaceRow, getDeleted, verifyFk, enumerateSafely } from '../dml-helpers.js'
+import { createMerger, addRow, deleteRow, getReplaced, replaceRow, getDeleted, verifyFk, batches } from '../dml-helpers.js'
 import * as db from '../index.js'
 import { nullableNumberType, nullableStringType, numberType, stringType } from '../type-hints.js'
-import { verifyUnlocked } from '../views/images.js'
 
 export function Row({ 
   characterId = numberType, 
@@ -40,15 +39,16 @@ const mergeInto = createMerger(new Row(), keyLength)
 export const pk = new IIA((a, b) => 
   a.characterId - b.characterId)
 
-/** @type {CharacterIndex<'locationId' | 'characterId'>} */
+/** @type {CharacterIndex<'locationId' | 'characterId' | 'name'>} */
 export const locationFk = new IIB((a, b) => 
   db.location.pk.comp(a, b) ||
+  nameUx.comp(a, b) ||
   pk.comp(a, b))
 
 /** @type {CharacterIndex<'speciesId' | 'characterId' | 'name'>} */
 export const speciesFk = new IIC((a, b) => 
   db.species.pk.comp(a, b) ||
-  compareStringsIgnoreCase(a.name, b.name) ||
+  nameUx.comp(a, b) ||
   pk.comp(a, b))
 
 /** @type {CharacterIndex<'name'>} */
@@ -87,8 +87,9 @@ export function update(tr, values) {
   mergeInto(row, old)
   if (row.imageId) {
     let image = verifyFk(db.image.pk, row, old)
-    if (image) verifyUnlocked(image)
+    if (image) db.image.verifyUnlocked(image)
   }
+  db.image.updateRefCounts(tr, row, old)
   if (row.locationId) verifyFk(db.location.pk, row, old)
   if (row.speciesId) verifyFk(db.species.pk, row, old)
   replaceRow(tr, nameUx, row, old)
@@ -102,17 +103,18 @@ export function update(tr, values) {
 @param {Pick<Row, 'characterId'>} key */
 export function remove(tr, key) {
   let row = getDeleted(tr, pk, key)
+  db.image.updateRefCounts(tr, null, row)
   db.title.charGameIx
-    .into(enumerateSafely(a => pk.comp(a, row)))
+    .into(batches(a => pk.comp(a, row)))
     .forEach(a => db.title.remove(tr, a))
   db.appearance.pk
-    .into(enumerateSafely(a => pk.comp(a, row)))
+    .into(batches(a => pk.comp(a, row)))
     .forEach(a => db.appearance.remove(tr, a))
   db.relationship.pk
-    .into(enumerateSafely(a => pk.comp(a, row)))
+    .into(batches(a => pk.comp(a, row)))
     .forEach(a => db.relationship.remove(tr, a))
   db.relationship.pk
-    .into(enumerateSafely(a => a.otherCharacterId - row.characterId))
+    .into(batches(a => a.otherCharacterId - row.characterId))
     .forEach(a => db.relationship.remove(tr, a))
   deleteRow(tr, speciesFk, row, true)
   deleteRow(tr, locationFk, row, true)

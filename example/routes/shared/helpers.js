@@ -39,17 +39,23 @@ export function handleDbErrors(err, req, res, next) {
         case db.species.pk: throw 'The species is gone'
         case db.character.pk: throw 'The character is gone'
         case db.game.pk: throw 'The game is gone'
-        default: throw 'Foreign key constraint violation'
+        default: 
+          console.log(err)
+          throw 'Foreign key constraint violation'
       }
     case 'locked':
       switch (err.details.index) {
         case db.image.pk: throw 'The image is locked'
-        default: throw 'The item is locked'
+        default: 
+          console.log(err)
+          throw 'The item is locked'
       }
     case 'restricted':
       switch (err.details.index) {
         case db.image.pk: throw 'The image is in use'
-        default: throw 'The item is in use'
+        default: 
+          console.log(err)
+          throw 'The item is in use'
       }      
     case 'requested': 
       switch (err.details.index) {
@@ -72,8 +78,12 @@ export function handleDbErrors(err, req, res, next) {
         case db.location.nameUx:
           res.locals.errors.name = 'A location with such name already exists'
           throw `rerender`
-        default: throw 'Constraint violation'
+        default: 
+          console.log(err)
+          throw 'Constraint violation'
       }
-    default: throw 'A database error'
+    default: 
+      console.log(err)
+      throw 'A database error'
   }
 }

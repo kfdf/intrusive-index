@@ -25,10 +25,15 @@ games.get('/:id',
     let game = db.game.pk.get({ gameId })
     if (!game) throw 'route'
     let page = db.game.dateIx.into(pageOf(game))
-    let locations = db.setting.gameFk
-      .enumerate(a => db.game.pk.comp(a, game))
-      .map(s => db.location.pk.get(s))
+    let locations = db.settingDen.gameLocationNameIx
+      .enumerate(a => db.game.pk.comp(a.game, game))
+      .map(a => a.location)
       .toArray()
+    // let locations = db.setting.gameFk
+    //   .enumerate(a => db.game.pk.comp(a, game))
+    //   .map(s => db.location.pk.get(s))
+    //   .sort(db.location.nameUx.comp)
+    //   .toArray()
     let characters = db.appearance.gameFk
       .enumerate(a => db.game.pk.comp(a, game))
       .sort((a, b) => a.order - b.order)

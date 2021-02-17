@@ -29,11 +29,15 @@ locations.get('/:locId',
       .enumerate(a => db.location.pk.comp(a, location))
       .sort(by(ch => ch.name))
       .toArray()
-    let games = db.setting.pk
-      .enumerate(a => db.location.pk.comp(a, location))
-      .map(s => db.game.pk.get(s))
-      .sort(by(game => game.date))
+    let games = db.settingDen.locGameDateIx
+      .enumerate(a => db.location.pk.comp(a.location, location))
+      .map(a => a.game)
       .toArray()
+    // let games = db.setting.pk
+    //   .enumerate(a => db.location.pk.comp(a, location))
+    //   .map(s => db.game.pk.get(s))
+    //   .sort(by(game => game.date))
+    //   .toArray()
     render(res, detailsView, {
       title: location.name,
       page, location, characters, games

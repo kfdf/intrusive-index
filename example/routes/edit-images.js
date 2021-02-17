@@ -1,50 +1,73 @@
 import express from 'express'
 import formidable from 'formidable'
 import * as db from '../db/index.js'
-import { deleteView, editLayout, figureRoot, formRoot, imageListRoot, paginator } from './shared/common.js'
+import { deleteView, editLayout, figureRoot, formRoot, gotoLinkRoot, imageListRoot, paginator } from './shared/common.js'
 import { html, render } from './shared/render.js'
-import { enumeratePage, DbError, countPages } from '../db/query-helpers.js'
+import { enumeratePage, countPages, pageOf } from '../db/query-helpers.js'
 import { dataFolder, pageSize } from '../config.js'
 import { join } from 'path'
 import { unlink, rename } from 'fs'
-import { catchRerender, handleDbErrors } from './shared/helpers.js'
-import { verifyChildless, verifyUnlocked } from '../db/views/images.js'
+import { handleDbErrors } from './shared/helpers.js'
 
 let images = express.Router()
 
+function getImage(req, res, next) {
+  let { imageId } = req.params
+  let image = db.image.pk.get({ imageId })
+  if (!image) throw 'route'
+  res.locals.image = image
+  next()
+}
 images.get('/',
   function (req, res) {
     let page = +req.query.page || 1
-    let images = db.image.pk
+    let images = db.image.isUsedIx
       .into(enumeratePage(page))
       .toArray()
-    let pageCount = db.image.pk.into(countPages())
+    let pageCount = db.image.isUsedIx.into(countPages())
     render(res, indexView, {
       title: 'Images',
       pageCount, page, images
     })
   }
 )
-function renderDeleteView(req, res) {
-  render(res, deleteView, {
-    title: 'Delete Image',
-    item: req.params.image
-  })
-}
-images.get('/:image/delete', 
-  renderDeleteView
+
+
+images.get('/:imageId', 
+  getImage,
+  function (req, res) {
+    let { image } = res.locals
+    let page = db.image.isUsedIx.into(pageOf(image))
+    let pred = a => db.image.pk.comp(a, image)
+    let characters = db.character.imageFk
+      .enumerate(pred).toArray()
+    let games = db.game.imageFk
+      .enumerate(pred).toArray()
+    render(res, detailsView, {
+      title: 'Image',
+      characters, games, page
+    })
+  }
+)
+images.get('/:imageId/delete', 
+  function (req, res) {
+    render(res, deleteView, {
+      title: 'Delete Image',
+      item: req.params.imageId
+    })
+  }
 )
 images.post('/:imageId/delete',
   function (req, res, next) {
     let { imageId } = req.params
-    let page = Math.ceil(db.image.pk
-      .findRange({ imageId }).end / pageSize)
+    let page = 1
     for (let tr of db.transaction()) {
       db.image.update(tr, { 
         imageId, locked: true 
       }, (row, old) => {
-        verifyUnlocked(old)
-        verifyChildless(old)
+        db.image.verifyUnlocked(old)
+        db.image.verifyChildless(old)
+        page = db.image.isUsedIx.into(pageOf(old))
       })
     }
     let filePath = join(dataFolder, 'images', imageId)
@@ -68,13 +91,13 @@ images.post('/:imageId/delete',
   },
   handleDbErrors
 )
-function renderUploadView(req, res) {
-  render(res, uploadView, {
-    title: 'Upload Image'
-  })
-}
+
 images.get('/upload',
-  renderUploadView
+  function(req, res) {
+    render(res, uploadView, {
+      title: 'Upload Image'
+    })
+  }
 )
 images.post('/upload', 
   function (req, res, next) {
@@ -85,7 +108,7 @@ images.post('/upload',
       let imageId = encodeURIComponent(files.image.name.replace(' ', '_'))
       try { for (let tr of db.transaction()) {
         db.image.create(tr, { 
-          imageId, locked: true
+          imageId, locked: true, refCount: 0
         })
       }} catch (err) {
         return next(err)
@@ -106,8 +129,7 @@ images.post('/upload',
         if (err) {
           return next('Failed to create the image')
         } else {
-          let page = Math.ceil(db.image.pk
-            .findRange({ imageId }).end / pageSize)          
+          let page = db.image.pk.into(pageOf({ imageId }))   
           res.redirect('/edit/images?page=' + page)
         }
       })
@@ -116,12 +138,54 @@ images.post('/upload',
   handleDbErrors
 )
 export default images
-function* uploadView({ title, error }) {
+function* detailsView({ title, page, image, games, characters }) {
+  let layout = editLayout({ title })
+  yield* layout.header()
+  yield html`
+  <div class="${gotoLinkRoot}">
+    Go back to
+    <a href="/edit/images?page=${page}">
+    the images
+    </a>
+  </div>
+  <div>
+    <img src="/images/${image.imageId}">
+  </div>
+  <h4>Name</h4>
+  <div>${image.imageId}</div>`
+  if (games.length) {
+    yield html`
+    <h4>Games</h4>
+    <ul>`
+    for (let game of games) {
+      yield html`
+      <li><a href="/edit/games/${game.gameId}">
+        ${game.name} (${game.shortName})
+      </a></li>`
+    }
+    yield html`
+    </ul>`
+  }
+  if (characters.length) {
+    yield html`
+    <h4>Characters</h4>
+    <ul>`
+    for (let char of characters) {
+      yield html`
+      <li><a href="/edit/characters/${char.characterId}">
+        ${char.name}
+      </a></li>`
+    }
+    yield html`
+    </ul>`
+  }
+  yield* layout.footer()
+}
+function* uploadView({ title }) {
   let layout = editLayout({ title })
   yield* layout.header()
   yield html`
   <form method="POST" enctype="multipart/form-data" class="${formRoot}" autocomplete="off">
-    <div class="errors">${error}</div>
     <input type="file" name="image" accept="image/*">
     <button type="submit">Submit</button>
   </form>`
@@ -142,13 +206,30 @@ function* indexView({ title, page, pageCount, images }) {
   for (let image of images) {
     yield html`
     <figure class="${figureRoot}">
-      <div class="overlay">
-        <a href="/edit/images/${image.imageId}/delete">
-          Delete
-        </a>
+      <div class="overlay">`
+
+      yield html`
       </div>
       <img src="/images/${image.imageId}">
-      <figcaption>${image.imageId}</figcaption>
+      <figcaption>
+        <div class="overlay">`
+        if (image.refCount == 0) {
+          yield html`
+          <a href="/edit/images/${image.imageId}/delete">
+            Delete
+          </a>
+          </div>
+            <small>UNUSED</small><br>`
+        } else {
+          yield html`
+          <a href="/edit/images/${image.imageId}">
+            Details
+          </a>
+          </div>`
+        }          
+        yield html`
+        ${image.imageId}
+      </figcaption>
     </figure>`
   }
   yield html`

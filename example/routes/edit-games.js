@@ -2,7 +2,6 @@ import express from 'express'
 import * as db from '../db/index.js'
 import characters from './edit-games-characters.js'
 import locations from './edit-games-locations.js'
-import { pageSize } from '../config.js'
 import { html, render } from './shared/render.js'
 import { deleteView, formRoot, operationsRoot, editLayout, newLinesRoot, paginator, selectImageRoot, figureRoot, selectImageView, gotoLinkRoot } from './shared/common.js'
 import { enumeratePage, countPages, pageOf } from '../db/query-helpers.js'
@@ -12,7 +11,7 @@ function beginPostHandling(req, res, next) {
   validate(req, res)
     .string('name', 'Name', { minLength: 1 })
     .string('shortName', 'Short name', { minLength: 1 })
-    .string('description', 'Description', { minLength: 1 })
+    .string('description', 'Description')
     .date('date', 'Release date')
   for (let _ in res.locals.errors) throw 'rerender'
   next()
@@ -124,8 +123,7 @@ games.post('/:gameId/delete',
   getGame, 
   function (req, res, next) {
     let { game } = res.locals
-    let page = Math.ceil(db.game.pk
-      .findRange(game).end / pageSize)
+    let page = db.game.pk.into(pageOf(game))
     for (let tr of db.transaction()) {
       db.game.remove(tr, game)
     }

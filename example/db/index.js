@@ -1,5 +1,5 @@
 import * as tables from './tables/index.js'
-import * as images from './views/images.js'
+import * as views from './views/index.js'
 import { loadTable, addToSaveQueue, listImages } from './storage.js'
 import { TransactionBase, IIA, IIB, IIC, IID, IIE, IIF } from './intrusive-index.js'
 export * from './tables/index.js'
@@ -66,9 +66,9 @@ export class Transaction extends TransactionBase {
         let index = indexes[i]
         let table = pkIndex.get(index)
         if (!table) continue
-        let { keyLength } = table
         let inserted = inserts[i]
         let removed = removals[i]
+        let { keyLength } = table
         verifyRow(inserted)
         verifyRow(removed)
         let values = []
@@ -134,8 +134,33 @@ let imageList = await listImages()
 let tr = new Transaction()
 try {
   for (let imageId of imageList) {
-    images.create(tr, { imageId, locked: false })
+    views.image.create(tr, { 
+      imageId, locked: false, refCount: 0
+    })
   }
+  tables.character.imageFk
+    .enumerate()
+    .segment(views.image.pk.comp)
+    .map(g => g.map(ch => ch.imageId))
+    .concat(tables.game.imageFk
+      .enumerate()
+      .segment(views.image.pk.comp)
+      .map(g => g.map(gm => gm.imageId)))
+    .map(g => {
+      let imageId = g.nextValue()
+      let refCount = g.reduce((c, a) => c + 1, 1)
+      return { imageId, refCount }
+    })
+    .filter(a => a.imageId != null)
+    .forEach(a => views.image.update(tr, a))
+  tables.game.pk
+    .enumerate()
+    .map(game => tables.setting.gameFk
+      .enumerate(a => tables.game.pk.comp(a, game))
+      .map(s => tables.location.pk.get(s))
+      .map(location => ({ game, location })))
+    .flatten()
+    .forEach(a => views.settingDen.upsert(tr, a))
 } catch (err) {
   console.log(err)
   process.exit()

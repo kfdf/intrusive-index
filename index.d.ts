@@ -1,6 +1,5 @@
 export class IndexIterator<T> {
-  moveNext(): boolean
-  current: T | undefined
+  nextValue(): T | undefined
   next(): IteratorResult<T, undefined>
   [Symbol.iterator](): IndexIterator<T>
   static from<T>(iterable: Iterable<T>): IndexIterator<T>  

@@ -21,12 +21,13 @@ if (mega) {
     }
     for (let i = 0; i < ii.size; i++) {
       let rator = ii.enumerate(i, i + 2)
-      while (rator.moveNext()) {
-        sum += rator.current.value
+      let item
+      while (item = rator.getNext()) {
+        sum += item.value
       }  
       let rator2 = ii.enumerate(a => a.value - i)
-      while (rator2.moveNext()) {
-        sum += rator2.current.value
+      while (item = rator2.getNext()) {
+        sum += item.value
       }       
       sum += ii.getAt(i).value
       sum += ii.get({ value: i }).value    
@@ -64,8 +65,9 @@ function enumerateInChunks(ii, chunkSize) {
     let pred = a => a.value < i ? -1: a.value < i + chunkSize ? 0 : 1
     let { start, end } = ii.findRange(pred)
     let rator = ii.enumerate(start, end)
-    while (rator.moveNext()) {
-      sum += rator.current.value
+    let item
+    while (item = rator.getNext()) {
+      sum += item.value
     }      
   }  
   console.log(Date.now() - start,  'findRange + range', sum)
@@ -74,8 +76,9 @@ function enumerateInChunks(ii, chunkSize) {
   for (let i = 0; i < len; i += chunkSize) {
     let pred = a => a.value < i ? -1: a.value < i + chunkSize ? 0 : 1
     let rator = ii.enumerate(pred)
-    while (rator.moveNext()) {
-      sum += rator.current.value
+    let item 
+    while (item = rator.getNext()) {
+      sum += item.value
     } 
   }
   console.log(Date.now() - start, 'where', sum)

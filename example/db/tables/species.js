@@ -1,6 +1,6 @@
 import { IIA, IIB } from '../intrusive-index.js'
 import { compareStringsIgnoreCase } from '../comparators.js'
-import { addRow, deleteRow, enumerateSafely, getDeleted, getReplaced, replaceRow } from '../dml-helpers.js'
+import { addRow, deleteRow, batches, getDeleted, getReplaced, replaceRow } from '../dml-helpers.js'
 import * as db from '../index.js'
 import { numberType, stringType } from '../type-hints.js'
 
@@ -55,7 +55,7 @@ export function remove(tr, key) {
   let row = getDeleted(tr, pk, key)
   deleteRow(tr, nameUx, row, true)
   db.character.speciesFk
-    .into(enumerateSafely(a => pk.comp(a, row)))
+    .into(batches(a => pk.comp(a, row)))
     .forEach(({ characterId }) => {
       db.character.update(tr, { characterId, speciesId: null })
     })

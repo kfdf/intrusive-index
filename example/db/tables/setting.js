@@ -37,8 +37,9 @@ export const gameFk = new IIB((a, b) =>
 export function upsert(tr, values) {
   let row = new Row(values)
   let old = tr.insert(pk, row)
-  verifyFk(db.game.pk, row, old)
-  verifyFk(db.location.pk, row, old)
+  let game = verifyFk(db.game.pk, row, old)
+  let location = verifyFk(db.location.pk, row, old)
+  db.settingDen.upsert(tr, { game, location })
   replaceRow(tr, gameFk, row, old, true)
   return row
 }
@@ -47,5 +48,6 @@ export function upsert(tr, values) {
 @param {Row} key */
 export function remove(tr, key) {
   let row = getDeleted(tr, pk, key)
+  db.settingDen.remove(tr, { game: row, location: row })
   deleteRow(tr, gameFk, row, true)
 }

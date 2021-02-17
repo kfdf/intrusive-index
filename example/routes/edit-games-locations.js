@@ -9,10 +9,14 @@ import { html, render } from './shared/render.js'
 let locations = express.Router({ mergeParams: true })
 function getLocations(req, res, next) {
   let { game } = res.locals
-  res.locals.locations = db.setting.gameFk
-    .enumerate(a => db.game.pk.comp(a, game))
-    .map(s => db.location.pk.get(s))
+  res.locals.locations = db.settingDen.gameLocationNameIx
+    .enumerate(a => db.game.pk.comp(a.game, game))
+    .map(a => a.location)
     .toArray()
+  // res.locals.locations = db.setting.gameFk
+  //   .enumerate(a => db.game.pk.comp(a, game))
+  //   .map(s => db.location.pk.get(s))
+  //   .toArray()
   next()
 }
 locations.get('/', 

@@ -1,7 +1,7 @@
 import { IIA, IIB } from '../intrusive-index.js'
 import * as db from '../index.js'
 import { compareStringsIgnoreCase } from '../comparators.js'
-import { addRow, deleteRow, enumerateSafely, getDeleted, getReplaced, replaceRow } from '../dml-helpers.js'
+import { addRow, deleteRow, batches, getDeleted, getReplaced, replaceRow } from '../dml-helpers.js'
 import { numberType, stringType } from '../type-hints.js'
 
 export function Row({ 
@@ -49,6 +49,7 @@ export function update(tr, values) {
   let row = new Row(values)
   let old = getReplaced(tr, pk, row)
   replaceRow(tr, nameUx, row, old)
+  db.settingDen.updateLocation(tr, row)
   return row
 }
 
@@ -59,11 +60,11 @@ export function remove(tr, key) {
   let row = getDeleted(tr, pk, key)
   deleteRow(tr, nameUx, row, true)
   db.character.locationFk
-    .into(enumerateSafely(a => pk.comp(a, row)))
+    .into(batches(a => pk.comp(a, row)))
     .forEach(({ characterId }) => {
       db.character.update(tr, { characterId, locationId: null })
     })
   db.setting.pk
-    .into(enumerateSafely(a => pk.comp(a, row)))
+    .into(batches(a => pk.comp(a, row)))
     .forEach(s => db.setting.remove(tr, s))
 }

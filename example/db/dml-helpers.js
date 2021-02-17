@@ -147,33 +147,14 @@ function* getBatches(index, predicate) {
     yield items
   }
 }
-// class BatchedIterator extends IndexIterator {
-//   constructor(index, predicate) {
-//     super()
-//     this.index = index
-//     this.predicate = predicate
-//   }
-//   moveNext() {
-//     let items = this.index
-//       .enumerate(this.predicate)
-//       .take(100)
-//       .toArray()  
-//     if (items.length === 0) {
-//       this.current = undefined
-//       return false
-//     } else {
-//       this.current = items
-//       return true
-//     }
-//   }
-// }
 /**
 @template T
 @template U
 @param {(a: U) => number} predicate
 @returns {(index: IntrusiveIndex<T, U>) => IndexIterator<T>} */
-export function enumerateSafely(predicate) {
+export function batches(predicate) {
   return index => IndexIterator
     .from(getBatches(index, predicate))
     .flatten()
 }
+

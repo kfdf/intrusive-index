@@ -106,12 +106,13 @@ locations.get('/:id/games',
   function (req, res) {
     let { location } = res.locals
     let page = +req.query.page || 1
-    let { start, end } = db.setting.pk
-      .findRange(a => db.location.pk.comp(a, location))
+    let { start, end } = db.settingDen.locGameDateIx
+      .findRange(a => db.location.pk.comp(a.location, location))
     let pageCount = Math.ceil((end - start) / pageSize)
-    let games = db.setting.pk
+    let games = db.settingDen.locGameDateIx
       .into(enumeratePage(page, start, end))
-      .map(s => db.game.pk.get(s))
+      .map(a => a.game)
+      // .map(s => db.game.pk.get(s))
       .toArray()
     render(res, gamesView, {
       title: 'Location Games',

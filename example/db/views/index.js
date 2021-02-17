@@ -1,1 +1,2 @@
-export * as image from './images.js'
+export * as image from './image.js'
+export * as settingDen from './setting-den.js'

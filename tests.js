@@ -180,11 +180,10 @@ function testQueries(index, set) {
     let rator = index.enumerate(i1, i2, descending ? 'desc' : 'asc')
     let rator2 = index.enumerate(comp, descending ? 'desc' : 'asc')
     for (let { value } of rator2) {
-      assert(rator.moveNext())
       assert(value === (descending ? ref[--end] : ref[start++]))
-      assert(value === rator.current.value)
+      assert(value === rator.getNext().value)
     }
-    assert(!rator.moveNext())    
+    assert(rator.getNext() === undefined)    
   }
   testRange(0, 0)
   testRange(index.size, index.size)
