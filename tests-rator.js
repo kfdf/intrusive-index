@@ -53,7 +53,8 @@ for (let emp of empPk.enumerate()) {
   empDepFk.add(emp)
   empManagerIx.add(emp)
 }
-let rows = depPk
+
+depPk
   .enumerate()
   .map(dep => empDepFk
     .enumerate(a => depPk.comp(a, dep))
@@ -61,17 +62,15 @@ let rows = depPk
     .map(emp => ({ emp, dep })))
   .flatten()
   .map(a => a.dep.name + ': ' + (a.emp ? a.emp.name : '--'))
-console.log(rows.toArray())
+  .forEach(row => console.log(row))
 
 let largestSalaries = depPk
   .enumerate()
-  .map(dep => {
-    let emp = empDepFk
-      .enumerate(a => depPk.comp(a, dep))
-      .reduce((max, emp) => emp.salary > max.salary ? emp : max)
-    return { dep, emp }
-  })
-  .map(a => a.dep.name + ': ' + (a.emp ? a.emp.name + ' ' + a.emp.salary : '--'))
+  .map(dep => ({ dep, emp: empDepFk
+    .enumerate(a => depPk.comp(a, dep))
+    .reduce((max, emp) => emp.salary > max.salary ? emp : max)
+  }))
+  .map(a => a.dep.name + ': ' + (a.emp ? a.emp.name + ' ' + a.emp.salary : ' no employees'))
   .toArray()
 console.log(largestSalaries)
 
@@ -95,7 +94,7 @@ function getEmplsFlat(manager) {
     .enumerate(e => e.manager - manager.empId)
     .map(getEmplsFlat)
     .flatten()
-    .concat(manager)
+    .into(rator => IndexIterator.from([manager, rator]).flatten())
 }
 getEmplsFlat(empPk.getAt(0))
   .map(emp => emp.name)
@@ -127,7 +126,7 @@ let salaries = empPk
   .enumerate()
   .group(by(a => a.salary / 100 | 0))
   .map(g => {
-    let h = g.next().value.salary / 100 | 0
+    let h = g.nextValue().salary / 100 | 0
     let length = g.reduce((a, e) => a + 1, 1)
     return { h, length }
   })

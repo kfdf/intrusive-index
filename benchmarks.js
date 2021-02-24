@@ -22,11 +22,11 @@ if (mega) {
     for (let i = 0; i < ii.size; i++) {
       let rator = ii.enumerate(i, i + 2)
       let item
-      while (item = rator.getNext()) {
+      while (item = rator.nextValue()) {
         sum += item.value
       }  
       let rator2 = ii.enumerate(a => a.value - i)
-      while (item = rator2.getNext()) {
+      while (item = rator2.nextValue()) {
         sum += item.value
       }       
       sum += ii.getAt(i).value
@@ -66,7 +66,7 @@ function enumerateInChunks(ii, chunkSize) {
     let { start, end } = ii.findRange(pred)
     let rator = ii.enumerate(start, end)
     let item
-    while (item = rator.getNext()) {
+    while (item = rator.nextValue()) {
       sum += item.value
     }      
   }  
@@ -77,7 +77,7 @@ function enumerateInChunks(ii, chunkSize) {
     let pred = a => a.value < i ? -1: a.value < i + chunkSize ? 0 : 1
     let rator = ii.enumerate(pred)
     let item 
-    while (item = rator.getNext()) {
+    while (item = rator.nextValue()) {
       sum += item.value
     } 
   }
@@ -90,9 +90,10 @@ function run(values) {
   let start = Date.now()
   let sum
   for (let i = 0; i < values.length; i++) {
+    // ii.add({ value: values[i], [IIA.l]: null, [IIA.r]: null, [IIA.d]: 1 })
     ii.add(new Row(values[i]))
   }
-  console.log(Date.now() - start)
+  console.log(Date.now() - start, process.memoryUsage().heapUsed)
   console.log('reading values one-by-one...')
   start = Date.now()
   sum = 0

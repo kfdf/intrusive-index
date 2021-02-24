@@ -1,8 +1,8 @@
 export default function constructorFactory() {
-  const UNCHANGED = 0
-  const UPDATED = 1
-  const RESIZED = 2
-  const UNBALANCED = 3
+  const UNC = 0
+  const UPD = 1
+  const RES = 2
+  const ROT = 3
   const l = Symbol('left')
   const r = Symbol('right')
   const d = Symbol('diff')
@@ -10,10 +10,10 @@ export default function constructorFactory() {
     let right = curr[r]
     if (right == null) {
       curr[r] = node
-      return (++curr[d] & 3) === 2 ? RESIZED : UPDATED
+      return (++curr[d] & 3) === 2 ? RES : UPD
     } 
     let cmp = comp(right, node)
-    let result = UNCHANGED
+    let result = UNC
     if (cmp < 0) {
       result = addRight(right, node, comp, replace)
     } else if (cmp > 0) {
@@ -21,25 +21,26 @@ export default function constructorFactory() {
     } else if (cmp === 0 && replace && right !== node) {
       curr[r] = detachNode(right, node)
     }
-    if (result < RESIZED) return result
-    if (result === UNBALANCED) {
-      curr[r] = right = rotate(right)
-      if ((right[d] & 3) === 1) return UPDATED
+    if (result === UNC) return UNC
+    if (result === UPD) return UPD
+    if (result === ROT) {
+      curr[r] = rotate(right)
+      return UPD
     }
     let diff = curr[d]
-    if ((diff & 3) === 2) return UNBALANCED
+    if ((diff & 3) === 2) return ROT
     curr[d] = diff + 1
-    return (diff & 3) === 1 ? RESIZED : UPDATED
+    return (diff & 3) === 1 ? RES : UPD
   }  
  
   function addLeft(curr, node, comp, replace) {
     let left = curr[l]
     if (left == null) {
       curr[l] = node
-      return ((curr[d] += 3) & 3) === 0 ? RESIZED : UPDATED
+      return ((curr[d] += 3) & 3) === 0 ? RES : UPD
     }    
     let cmp = comp(left, node)
-    let result = UNCHANGED
+    let result = UNC
     if (cmp < 0) {
       result = addRight(left, node, comp, replace)
     } else if (cmp > 0) {
@@ -47,17 +48,17 @@ export default function constructorFactory() {
     } else if (cmp === 0 && replace && left !== node) {
       curr[l] = detachNode(left, node)
     }
-    if (result === UNCHANGED) return UNCHANGED
+    if (result === UNC) return UNC
     let diff = curr[d]
     curr[d] = (diff += 4)
-    if (result === UPDATED) return UPDATED
-    if (result === UNBALANCED) {
+    if (result === UPD) return UPD
+    if (result === ROT) {
       curr[l] = left = rotate(left)
-      if ((left[d] & 3) === 1) return UPDATED
+      return UPD
     }
-    if ((diff & 3) === 0) return UNBALANCED
+    if ((diff & 3) === 0) return ROT
     curr[d] = diff - 1
-    return (diff & 3) === 1 ? RESIZED : UPDATED
+    return (diff & 3) === 1 ? RES : UPD
   }  
   let detachedNode = null  
   function detachNode(target, repl) {
@@ -69,7 +70,7 @@ export default function constructorFactory() {
   }
   function getDetached() {
     let ret = detachedNode
-    if (!ret) return ret
+    if (ret == null) return ret
     ret[l] = null
     ret[r] = null
     ret[d] = -1
@@ -80,10 +81,10 @@ export default function constructorFactory() {
   @returns {0|1|2|3} */
   function deleteLeft(curr, value, comp) {
     let left = curr[l]
-    if (left == null) return UNCHANGED
+    if (left == null) return UNC
     let cmp = value === undefined ? comp(left) : comp(left, value)
     /** @type {0|1|2|3} */
-    let result = UNCHANGED
+    let result = UNC
     if (cmp > 0) {
       result = deleteLeft(left, value, comp)
     } else if (cmp < 0) {
@@ -91,87 +92,97 @@ export default function constructorFactory() {
     } else if (cmp === 0) {
       let ll = left[l]
       let lr = left[r]
-      if (ll && lr) {
+      if (ll != null && lr != null) {
         let size = left[d] >>> 2
         result = deleteLeftAt(left, size - 1)
         curr[l] = left = detachNode(left, detachedNode)
       } else {
         detachedNode = left
-        curr[l] = left = ll || lr
-        result = RESIZED
+        curr[l] = left = ll == null ? lr : ll
+        result = RES
       }
     } 
-    if (result === UNCHANGED) return UNCHANGED
+    if (result === UNC) return UNC
     curr[d] -= 4
-    if (result === UPDATED) return UPDATED  
+    if (result === UPD) return UPD  
     return deleteLeftFix(curr, result)
   }  
   /** 
   @returns {1|2|3} */
-  function deleteLeftAt(curr, pos) {
+  function deleteLeftAt(curr, offset) {
     let left = curr[l]
     let size = left[d] >>> 2
     /** @type {1|2|3} */
-    let result = UNCHANGED
-    if (size > pos) {
-      result = deleteLeftAt(left, pos)
-    } else if (size < pos) {
-      result = deleteRightAt(left, pos - size - 1)
-    } else if (left[l] && left[r]) {
-      result = deleteLeftAt(left, size - 1)
-      curr[l] = left = detachNode(left, detachedNode)
-    } else {
-      detachedNode = left
-      curr[l] = left = left[l] || left[r]
-      result = RESIZED
-    }
+    let result = UNC
+    if (size > offset) {
+      result = deleteLeftAt(left, offset)
+    } else if (size < offset) {
+      result = deleteRightAt(left, offset - size - 1)
+    } else if (size === offset) {
+      let ll = left[l]
+      let lr = left[r]
+      if (ll != null && lr != null) {
+        result = deleteLeftAt(left, size - 1)
+        curr[l] = left = detachNode(left, detachedNode)
+      } else {
+        detachedNode = left
+        curr[l] = left = ll == null ? lr : ll
+        result = RES
+      }
+    } 
+    if (result === UNC) return UNC
     curr[d] -= 4
-    if (result === UPDATED) return UPDATED  
+    if (result === UPD) return UPD  
     return deleteLeftFix(curr, result)
   }  
   /**
   @param {2|3} result */
   function deleteLeftFix(curr, result) {
-    if (result === UNBALANCED) {
+    if (result === ROT) {
       let left = rotate(curr[l]) 
       curr[l] = left
-      if ((left[d] & 3) != 1) return UPDATED
+      if ((left[d] & 3) != 1) return UPD
     }
     let diff = curr[d]
-    if ((diff & 3) === 2) return UNBALANCED
+    if ((diff & 3) === 2) return ROT
     curr[d] = diff + 1
-    return (diff & 3) === 1 ? UPDATED : RESIZED
+    return (diff & 3) === 1 ? UPD : RES
   }  
   /** 
   @returns {1|2|3} */
-  function deleteRightAt(curr, pos) {
+  function deleteRightAt(curr, offset) {
     let right = curr[r]
     let size = right[d] >>> 2
     /** @type {1|2|3} */
-    let result = UNCHANGED
-    if (size > pos) {
-      result = deleteLeftAt(right, pos)
-    } else if (size < pos) {
-      result = deleteRightAt(right, pos - size - 1)
-    } else if (right[l] && right[r]) {
-      result = deleteLeftAt(right, size - 1)
-      curr[r] = right = detachNode(right, detachedNode)
-    } else {
-      detachedNode = right
-      curr[r] = right = right[l] || right[r]
-      result = RESIZED
+    let result = UNC
+    if (size > offset) {
+      result = deleteLeftAt(right, offset)
+    } else if (size < offset) {
+      result = deleteRightAt(right, offset - size - 1)
+    } else if (size === offset) {
+      let rl = right[l]
+      let rr = right[r]
+      if (rl != null && rr != null) {
+        result = deleteLeftAt(right, size - 1)
+        curr[r] = right = detachNode(right, detachedNode)
+      } else {
+        detachedNode = right
+        curr[r] = right = rl == null ? rr : rl
+        result = RES
+      }
     }
-    if (result === UPDATED) return UPDATED
+    if (result === UNC) return UNC
+    if (result === UPD) return UPD
     return deleteRightFix(curr, result)
   }
   /** 
   @returns {0|1|2|3} */
   function deleteRight(curr, value, comp) {
     let right = curr[r]
-    if (right == null) return UNCHANGED  
+    if (right == null) return UNC  
     let cmp = value === undefined ? comp(right) : comp(right, value)
     /** @type {0|1|2|3} */
-    let result = UNCHANGED
+    let result = UNC
     if (cmp > 0) {
       result = deleteLeft(right, value, comp)
     } else if (cmp < 0) {
@@ -179,32 +190,32 @@ export default function constructorFactory() {
     } else if (cmp === 0) {
       let rl = right[l]
       let rr = right[r]
-      if (rl && rr) {
+      if (rl != null && rr != null) {
         let size = right[d] >>> 2
         result = deleteLeftAt(right, size - 1)
         curr[r] = right = detachNode(right, detachedNode)
       } else {
         detachedNode = right
-        curr[r] = right = rl || rr
-        result = RESIZED
+        curr[r] = right = rl == null ? rr : rl
+        result = RES
       }
     }
-    if (result === UNCHANGED) return UNCHANGED
-    if (result === UPDATED) return UPDATED
+    if (result === UNC) return UNC
+    if (result === UPD) return UPD
     return deleteRightFix(curr, result)
   }
   /** 
   @param {2|3} result */
   function deleteRightFix(curr, result) {
-    if (result === UNBALANCED) {
+    if (result === ROT) {
       let right = rotate(curr[r])
       curr[r] = right
-      if ((right[d] & 3) != 1) return UPDATED
+      if ((right[d] & 3) != 1) return UPD
     }
     let diff = curr[d]
-    if ((diff & 3) === 0) return UNBALANCED
+    if ((diff & 3) === 0) return ROT
     curr[d] = diff - 1
-    return (diff & 3) === 1 ? UPDATED : RESIZED
+    return (diff & 3) === 1 ? UPD : RES
   }  
 
   function rotate(node) {
@@ -319,45 +330,44 @@ export default function constructorFactory() {
       let nodes = []
       this.nodes = nodes
       this.reversed = reversed
-      this.start = start
-      this.end = end
+      this.count = 0
       this.following = null
-      let offset = 0
-      while (root) {
+      let bound = 0
+      while (root != null) {
         let size = root[d] >>> 2
-        let pos = offset + size
-        if (pos < start) {
-          offset += size + 1
+        let offset = bound + size
+        if (offset < start) {
+          bound += size + 1
           root = root[r]
-        } else if (pos >= end) {
+        } else if (offset >= end) {
           root = root[l]
         } else {
           let target = reversed ? end - 1 : start
           while (true) {
-            if (pos < target) {
-              offset += size + 1
+            if (offset < target) {
+              bound += size + 1
               if (reversed) nodes.push(root)
               root = root[r]
-            } else if (pos > target) {
+            } else if (offset > target) {
               if (!reversed) nodes.push(root)
               root = root[l]
             } else {
               nodes.push(root)
               root = null
             }
-            if (!root) {
-              if (reversed) this.end = pos + 1
-              else this.start = pos
+            if (root == null) {
+              this.count = reversed ? 
+                offset + 1 - start : end - offset
               return
             }
             size = root[d] >>> 2
-            pos = offset + size
+            offset = bound + size
           }          
         }
       }   
     }
     nextValue() {
-      if (this.start++ >= this.end) return
+      if (--this.count < 0) return
       let { nodes, following, reversed } = this
       while (following) {
         nodes.push(following)
@@ -369,7 +379,7 @@ export default function constructorFactory() {
       return ret
     }
   }
-  class PredicateIterator extends IndexIterator {
+  class CompIterator extends IndexIterator {
     constructor(root, comp, reversed) {
       super()
       let nodes = []
@@ -447,11 +457,11 @@ export default function constructorFactory() {
       }
       return getDetached()
     }
-    deleteAt(pos) {
+    deleteAt(offset) {
       let { root, size } = this
-      if (pos < 0 || pos >= size) return null
+      if (offset < 0 || offset >= size) return null
       detachedNode = null
-      deleteLeftAt(root, pos)
+      deleteLeftAt(root, offset)
       return getDetached()
     }
     get(value) {
@@ -466,14 +476,14 @@ export default function constructorFactory() {
         else break
       }
     }  
-    getAt(pos) {
+    getAt(offset) {
       let node = this.tempRoot || this.root[l]      
       while (node) {
         let size = node[d] >>> 2
-        if (pos < size) {
+        if (offset < size) {
           node = node[l]
-        } else if (pos > size) {
-          pos -= size + 1
+        } else if (offset > size) {
+          offset -= size + 1
           node = node[r]
         } else {
           return node
@@ -503,16 +513,16 @@ export default function constructorFactory() {
           continue
         } 
         if (start === -1 && cmp === 0) {
-          let nodePos = end + (node[d] >>> 2)
+          let nodeOffset = end + (node[d] >>> 2)
           preStart = preEnd // !!
           if (option === 'any') {
-            start = nodePos
-            end = nodePos + 1
+            start = nodeOffset
+            end = nodeOffset + 1
             atStart = node
             preEnd = node
             break loop
           }
-          start = nodePos
+          start = nodeOffset
           atStart = node
           if (option !== 'end') {
             let offset = end
@@ -531,7 +541,7 @@ export default function constructorFactory() {
               }
             }
             if (option === 'start') {
-              end = nodePos + 1
+              end = nodeOffset + 1
               preEnd = node
               break loop
             }
@@ -556,7 +566,7 @@ export default function constructorFactory() {
     enumerate(a, b, c) {
       let node = this.tempRoot || this.root[l]
       if (typeof a === 'function') {
-        return new PredicateIterator(node, a, b === 'desc')
+        return new CompIterator(node, a, b === 'desc')
       } else if (typeof a !== 'number') {
         return new RangeIterator(node, 0, Infinity, a === 'desc')
       } else if (typeof b !== 'number') {
@@ -599,9 +609,6 @@ export class IndexIterator {
   flatten() {
     return new FlattenIterator(this)
   }
-  range(start, end) {
-    return new RangeIterator(this, start, end)
-  }
   skip(count) {
     return new SkipIterator(this, count)
   }
@@ -624,7 +631,7 @@ export class IndexIterator {
     return this.sort(comparator).segment(comparator)
   }
   concat(value) {
-    return IndexIterator.from([this, value]).flatten()
+    return new ArrayIterator([this, value]).flatten()
   }
   into(func) {
     return func(this)
@@ -685,12 +692,10 @@ class ArrayIterator extends IndexIterator {
   constructor(array) {
     super()
     this.array = array
-    this.pos = 0
+    this.offset = 0
   }
   nextValue() {
-    let { array } = this
-    if (this.pos > array.length) return
-    return array[this.pos++]
+    return this.array[this.offset++]
   }
 }
 class MapIterator extends IndexIterator {
@@ -787,28 +792,28 @@ class BufferedIterator extends IndexIterator {
     super()
     this.rator = rator
     this.buffer = null
-    this.pos = 0
+    this.offset = 0
   }
   nextValue() {
-    let { buffer, pos } = this
+    let { buffer, offset } = this
     if (buffer === null) {
       this.init()
       if ((buffer = this.buffer) === null) return
     }
-    if (pos < buffer.length) {
-      this.pos = pos + 1
-      let ret = buffer[pos]
-      buffer[pos] = undefined
+    if (offset < buffer.length) {
+      this.offset = offset + 1
+      let ret = buffer[offset]
+      buffer[offset] = undefined
       return ret
     }
     this.buffer = null
   }  
   toArray() {
     this.init()
-    let { buffer, pos } = this
+    let { buffer, offset } = this
     if (buffer === null) return []
     this.buffer = null
-    if (pos > 0) buffer.splice(0, pos)
+    if (offset > 0) buffer.splice(0, offset)
     return buffer
   } 
 }
@@ -872,11 +877,11 @@ class GroupIterator extends BufferedIterator {
   nextValue() {
     if (this.buffer !== null) {
       // return super.nextValue()
-      let { buffer, pos } = this
-      if (pos < buffer.length) {
-        this.pos = pos + 1
-        let ret = buffer[pos]
-        buffer[pos] = undefined
+      let { buffer, offset } = this
+      if (offset < buffer.length) {
+        this.offset = offset + 1
+        let ret = buffer[offset]
+        buffer[offset] = undefined
         return ret
       }
       this.buffer = null
@@ -940,16 +945,16 @@ export class TransactionBase {
   }
   delete(index, item) {
     let removed = index.delete(item)
-    if (!removed) return null
+    if (removed == null) return null
     let { indexes, removals, inserts } = this.journal
     indexes.push(index)
     removals.push(removed)
     inserts.push(null)        
     return removed
   }
-  deleteAt(index, pos) {
-    let removed = index.deleteAt(pos)
-    if (!removed) return null
+  deleteAt(index, offset) {
+    let removed = index.deleteAt(offset)
+    if (removed == null) return null
     let { indexes, removals, inserts } = this.journal
     indexes.push(index)
     removals.push(removed)

@@ -42,27 +42,25 @@ export interface IntrusiveIndex<T extends U, U = T> {
   add(value: T): boolean
   insert(value: T): T | null
   delete(key: U): T | null
-  delete(predicate: (a: U) => number): T | null
-  deleteAt(pos: number): T | null
+  delete(unaryComp: (a: U) => number): T | null
+  deleteAt(offset: number): T | null
   get(key: U): T | undefined
-  get(predicate: (a: U) => number): T | undefined
-  getAt(pos: number): T | undefined
-  findRange<O extends RangeOption = 'full'>(predicate: (a: U) => number, option?: O): FullRange<T, O>
+  get(unaryComp: (a: U) => number): T | undefined
+  getAt(offset: number): T | undefined
+  findRange<O extends RangeOption = 'full'>(unaryComp: (a: U) => number, option?: O): FullRange<T, O>
   findRange<O extends RangeOption = 'any'>(key: U, option?: O): FullRange<T, O>
   enumerate(start: number, end: number, order?: Order): IndexIterator<T>
   enumerate(start: number, order?: Order): IndexIterator<T>
   enumerate(order?: Order): IndexIterator<T>
-  enumerate(predicate: (a: U) => number, order?: Order): IndexIterator<T> & {
-    setNext(predicate: (a: U) => number): void
-  }
+  enumerate(unaryComp: (a: U) => number, order?: Order): IndexIterator<T>
   into<K>(func: (ii: IntrusiveIndex<T, U>) => K) : K
   setRoot(root: T): void
 }
 export interface IndexConstructor {          
   new <T extends U, U = T>(comparator: (a: U, b: U) => number): IntrusiveIndex<T, U>
-  l: symbol
-  r: symbol
-  d: symbol
+  readonly l: symbol
+  readonly r: symbol
+  readonly d: symbol
 }
 export default function constructorFactory(): IndexConstructor
 export const IIA: IndexConstructor
@@ -75,16 +73,16 @@ export const IIF: IndexConstructor
 export function createFactory(): () => IndexConstructor
 export class TransactionBase {
   readonly journal: {
-    savepoints: number[]
-    indexes: IntrusiveIndex<any>[]
-    removals: any[]
-    inserts: any[]
+    readonly savepoints: number[]
+    readonly indexes: IntrusiveIndex<any>[]
+    readonly removals: any[]
+    readonly inserts: any[]
   }
   add<T>(index: IntrusiveIndex<T, any>, value: T): boolean
-  insert<T>(index: IntrusiveIndex<T, any>, value: T): T | undefined
-  delete<T extends U, U>(index: IntrusiveIndex<T, U>, predicate: (a: U) => number): T | undefined
-  delete<T extends U, U>(index: IntrusiveIndex<T, U>, key: U): T | undefined
-  deleteAt<T>(index: IntrusiveIndex<T, any>, pos: number): T | undefined
+  insert<T>(index: IntrusiveIndex<T, any>, value: T): T | null
+  delete<T extends U, U>(index: IntrusiveIndex<T, U>, unaryComp: (a: U) => number): T | null
+  delete<T extends U, U>(index: IntrusiveIndex<T, U>, key: U): T | null
+  deleteAt<T>(index: IntrusiveIndex<T, any>, offset: number): T | null
   savepoint(): void
   release(): void
   rollback(): boolean

@@ -181,9 +181,9 @@ function testQueries(index, set) {
     let rator2 = index.enumerate(comp, descending ? 'desc' : 'asc')
     for (let { value } of rator2) {
       assert(value === (descending ? ref[--end] : ref[start++]))
-      assert(value === rator.getNext().value)
+      assert(value === rator.nextValue().value)
     }
-    assert(rator.getNext() === undefined)    
+    assert(rator.nextValue() === undefined)    
   }
   testRange(0, 0)
   testRange(index.size, index.size)
