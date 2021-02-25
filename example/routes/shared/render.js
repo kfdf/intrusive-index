@@ -1,3 +1,11 @@
+/*
+I actually don't like ejs, most notably that it sits in 
+separate files, also and I'm not on good terms with css, 
+espesially organizing it, so when I throw in some css rules
+I want them to be scoped to the component and only appear 
+on the page when if the component is used on the page. 
+This tiny framework does all that.
+*/
 export function html(strings, ...args) {
   return { strings, args }
 }

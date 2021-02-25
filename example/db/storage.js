@@ -95,6 +95,8 @@ export function addToSaveQueue(fileName, values) {
   cooldown = true
   saveData()
 }
+
+// we assume this method never fails
 async function saveData() {
   await 0
   while (queues.size) {

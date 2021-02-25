@@ -21,8 +21,7 @@ export default function constructorFactory() {
     } else if (cmp === 0 && replace && right !== node) {
       curr[r] = detachNode(right, node)
     }
-    if (result === UNC) return UNC
-    if (result === UPD) return UPD
+    if (result <= UPD) return result
     if (result === ROT) {
       curr[r] = rotate(right)
       return UPD
@@ -141,7 +140,7 @@ export default function constructorFactory() {
     if (result === ROT) {
       let left = rotate(curr[l]) 
       curr[l] = left
-      if ((left[d] & 3) != 1) return UPD
+      if ((left[d] & 3) !== 1) return UPD
     }
     let diff = curr[d]
     if ((diff & 3) === 2) return ROT
@@ -171,8 +170,7 @@ export default function constructorFactory() {
         result = RES
       }
     }
-    if (result === UNC) return UNC
-    if (result === UPD) return UPD
+    if (result <= UPD) return result
     return deleteRightFix(curr, result)
   }
   /** 
@@ -200,8 +198,7 @@ export default function constructorFactory() {
         result = RES
       }
     }
-    if (result === UNC) return UNC
-    if (result === UPD) return UPD
+    if (result <= UPD) return result
     return deleteRightFix(curr, result)
   }
   /** 
@@ -210,7 +207,7 @@ export default function constructorFactory() {
     if (result === ROT) {
       let right = rotate(curr[r])
       curr[r] = right
-      if ((right[d] & 3) != 1) return UPD
+      if ((right[d] & 3) !== 1) return UPD
     }
     let diff = curr[d]
     if ((diff & 3) === 0) return ROT
@@ -220,15 +217,15 @@ export default function constructorFactory() {
 
   function rotate(node) {
     if ((node[d] & 3) === 2) {
-  //    2+                    0       
-  // |x|    1             2    |x|    
-  //     |x| |x|       |x| |x| |1|    
-  //     |1| |1|           |1|        
-  // ---------------------------------
-  //    2+                    1       
-  // |x|    2             1    |x|    
-  //     |x| |x|       |x| |x| |1|    
-  //         |1|                      
+//    2+                    0  
+// |x|    1             2    |x| 
+//     |x| |x|       |x| |x| |1| 
+//     |1| |1|           |1| 
+//-------------------------------
+//    2+                    1 
+// |x|    2             1    |x|
+//     |x| |x|       |x| |x| |1|
+//         |1|
       let right = node[r]
       let diff = right[d] & 3
       let nodeSize = node[d] & ~3
@@ -245,10 +242,10 @@ export default function constructorFactory() {
         right[d] += nodeSize + 4
         return right
       } else {
-  //    2+                    1       
-  // |x|        0         ?       ?   
-  //        ?    |x|   |x| |x? |x? |x|
-  //     |x? |x?                      
+//    2+                    1       
+// |x|        0         ?       ?   
+//        ?    |x|   |x| |x? |x? |x|
+//     |x? |x?
         let left = right[l]
         let diff = left[d] & 3
         if (diff === 2) {
@@ -271,15 +268,15 @@ export default function constructorFactory() {
         return left
       }
     } else {
-  //        0-             2           
-  //    1    |x|       |x|    0       
-  // |x| |x|           |1| |x| |x|    
-  // |1| |1|               |1|        
-  // ---------------------------------
-  //        0-             1           
-  //   0     |x|       |x|    1       
-  // |x| |x|           |1| |x| |x|    
-  // |1|                              
+//        0-             2       
+//    1    |x|       |x|    0    
+// |x| |x|           |1| |x| |x| 
+// |1| |1|               |1|     
+//-------------------------------
+//        0-             1       
+//   0     |x|       |x|    1    
+// |x| |x|           |1| |x| |x| 
+// |1|
       let left = node[l]
       let leftD = left[d]
       let leftSize = leftD & ~3
@@ -297,10 +294,10 @@ export default function constructorFactory() {
         node[d] -= leftSize + 4
         return left
       } else {
-  //               0-            1       
-  //       2        |x|      ?       ?   
-  //    |x|    ?          |x| |x? |x? |x|
-  //        |x? |x?                      
+//            0-            1       
+//    2        |x|      ?       ?   
+// |x|    ?          |x| |x? |x? |x|
+//     |x? |x?                      
         let right = left[r]
         let diff = right[d] & 3
         if (diff === 2) {

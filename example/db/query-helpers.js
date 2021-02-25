@@ -5,7 +5,6 @@ export { DbError } from './dml-helpers.js'
 @template T
 @template U
 @typedef {import('./intrusive-index.js').IntrusiveIndex<T, U>} IntrusiveIndex */
-
 export function generator(func) {
   return rator => IndexIterator.from(func(rator))
 }

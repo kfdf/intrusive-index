@@ -131,6 +131,10 @@ function verifyRow(row) {
 
 // @ts-ignore
 let imageList = await listImages()
+/*
+The views is not persisted, so when the data is loaded
+they have to be created manually, not ideal...
+*/
 let tr = new Transaction()
 try {
   for (let imageId of imageList) {

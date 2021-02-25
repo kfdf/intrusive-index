@@ -3,7 +3,7 @@ export class IndexIterator<T> {
   next(): IteratorResult<T, undefined>
   [Symbol.iterator](): IndexIterator<T>
   static from<T>(iterable: Iterable<T>): IndexIterator<T>  
-  into<U>(func: (generator: IndexIterator<T>) => U) : U
+  into<U>(callback: (generator: IndexIterator<T>) => U) : U
   toArray(): T[]
   forEach(callback: (value: T, i: number) => void): void
   reduce<U>(operation: (accum: U, value: T, i: number) => U, initial: U): U
@@ -42,18 +42,18 @@ export interface IntrusiveIndex<T extends U, U = T> {
   add(value: T): boolean
   insert(value: T): T | null
   delete(key: U): T | null
-  delete(unaryComp: (a: U) => number): T | null
+  delete(comparator: (a: U) => number): T | null
   deleteAt(offset: number): T | null
   get(key: U): T | undefined
-  get(unaryComp: (a: U) => number): T | undefined
+  get(comparator: (a: U) => number): T | undefined
   getAt(offset: number): T | undefined
-  findRange<O extends RangeOption = 'full'>(unaryComp: (a: U) => number, option?: O): FullRange<T, O>
+  findRange<O extends RangeOption = 'full'>(comparator: (a: U) => number, option?: O): FullRange<T, O>
   findRange<O extends RangeOption = 'any'>(key: U, option?: O): FullRange<T, O>
   enumerate(start: number, end: number, order?: Order): IndexIterator<T>
   enumerate(start: number, order?: Order): IndexIterator<T>
   enumerate(order?: Order): IndexIterator<T>
-  enumerate(unaryComp: (a: U) => number, order?: Order): IndexIterator<T>
-  into<K>(func: (ii: IntrusiveIndex<T, U>) => K) : K
+  enumerate(comparator: (a: U) => number, order?: Order): IndexIterator<T>
+  into<K>(callback: (ii: IntrusiveIndex<T, U>) => K) : K
   setRoot(root: T): void
 }
 export interface IndexConstructor {          
@@ -80,7 +80,7 @@ export class TransactionBase {
   }
   add<T>(index: IntrusiveIndex<T, any>, value: T): boolean
   insert<T>(index: IntrusiveIndex<T, any>, value: T): T | null
-  delete<T extends U, U>(index: IntrusiveIndex<T, U>, unaryComp: (a: U) => number): T | null
+  delete<T extends U, U>(index: IntrusiveIndex<T, U>, comparator: (a: U) => number): T | null
   delete<T extends U, U>(index: IntrusiveIndex<T, U>, key: U): T | null
   deleteAt<T>(index: IntrusiveIndex<T, any>, offset: number): T | null
   savepoint(): void

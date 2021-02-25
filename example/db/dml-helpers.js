@@ -53,12 +53,15 @@ export function getReplaced(tr, index, row,  failureIsFatal = false) {
   return replaced
 }
 /** 
+A pretty important method, illustrates how to update rows.
+`old` argument can be null to facilitate upserts.
+Perhaps it should have been a part of the TransactionBase class.
 @template T
 @template U
 @param {Transaction} tr
 @param {IntrusiveIndex<T, U>} index
 @param {T} row
-@param {T | null} old can be null for upserts
+@param {T | null} old
 @param {boolean} failureIsFatal */
 export function replaceRow(tr, index, row, old, failureIsFatal = false) {
   let replaced = tr.insert(index, row)
@@ -99,6 +102,9 @@ export function deleteRow(tr, index, row, failureIsFatal = false) {
   }, failureIsFatal)
 }
 /**
+merging rows can be quite a frequent operation, 
+and using `for in` loop is comparatively slow, so this
+factory creates efficient merger for a particular type
 @template T
 @param {T} template
 @param {number} keyLength
@@ -137,6 +143,7 @@ export function verifyFkComp(parentPk, pred) {
   })
   return parent
 }
+
 function* getBatches(index, predicate) {
   while (true) {
     let items = index
@@ -148,13 +155,18 @@ function* getBatches(index, predicate) {
   }
 }
 /**
+Find rows one by one for modification is slow,
+enumerating while modifying breaks things, so the
+easiest solution extract rows from a range in small 
+batches. This method assumes the range it enumerates
+will eventually dissapear, or it will loop forever.
 @template T
 @template U
-@param {(a: U) => number} predicate
+@param {(a: U) => number} comparator
 @returns {(index: IntrusiveIndex<T, U>) => IndexIterator<T>} */
-export function batches(predicate) {
+export function batches(comparator) {
   return index => IndexIterator
-    .from(getBatches(index, predicate))
+    .from(getBatches(index, comparator))
     .flatten()
 }
 
