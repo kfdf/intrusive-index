@@ -320,6 +320,45 @@ export default function constructorFactory() {
         return right
       }
     }
+  } 
+  function findRangeV8Plz(isComp, value, part, 
+    from, start, preStart, atStart, end, 
+    preEnd, atEnd, root, rootOffset, rootBase
+  ) {
+    if (start === -1) {
+      start = end
+      preStart = preEnd
+      atStart = atEnd
+    } else if (part === 'any') {
+      end = rootOffset + 1
+      preEnd = root
+    } else if (part !== 'end') {
+      let base = rootBase
+      let node = root[l]
+      while (node) {
+        let offset = base + (node[d] >>> 2)
+        let cmp = from !== undefined && offset < from ? -1 :
+          isComp ? value(node) : comp(node, value)
+        if (cmp >= 0) {
+          start = offset
+          atStart = node
+          node = node[l]
+        } else {
+          base = offset + 1
+          preStart = node
+          node = node[r]
+        }
+      }
+      if (part === 'start') {
+        end = rootOffset + 1
+        preEnd = root
+      }
+    }
+    return {
+      start, preStart, atStart, 
+      end, preEnd, atEnd,
+      rootBase, root, rootOffset,
+    }    
   }
   class RangeIterator extends IndexIterator {
     constructor(root, start, end, reversed) {
@@ -329,12 +368,12 @@ export default function constructorFactory() {
       this.reversed = reversed
       this.count = 0
       this.following = null
-      let bound = 0
+      let base = 0
       while (root != null) {
         let size = root[d] >>> 2
-        let offset = bound + size
+        let offset = base + size
         if (offset < start) {
-          bound += size + 1
+          base = offset + 1
           root = root[r]
         } else if (offset >= end) {
           root = root[l]
@@ -342,7 +381,7 @@ export default function constructorFactory() {
           let target = reversed ? end - 1 : start
           while (true) {
             if (offset < target) {
-              bound += size + 1
+              base = offset + 1
               if (reversed) nodes.push(root)
               root = root[r]
             } else if (offset > target) {
@@ -353,12 +392,12 @@ export default function constructorFactory() {
               root = null
             }
             if (root == null) {
-              this.count = reversed ? 
+              this.count = reversed ?
                 offset + 1 - start : end - offset
               return
             }
             size = root[d] >>> 2
-            offset = bound + size
+            offset = base + size
           }          
         }
       }   
@@ -487,77 +526,62 @@ export default function constructorFactory() {
         }
       }
     } 
-    findRange(value, option) {
+    findRange(value, part, from, upto) {
       let node = this.tempRoot || this.root[l]
       let { comp } = this
       let isComp = typeof value === 'function'
-      if (option === undefined) {
-        option = isComp ? 'full' : 'any'
+      if (part === undefined) {
+        part = isComp ? 'full' : 'any'
+      }
+      if (from === undefined) {
+        if (upto !== undefined) from = 0
+      } else {
+        if (upto === undefined) upto = Infinity
       }
       let end = 0
       let start = -1
+      let rootOffset = -1
+      let rootBase = 0
+      let root = undefined
       let preStart = undefined
       let atStart = undefined
       let preEnd = undefined
       let atEnd = undefined
-      loop:
-      while (node) {
-        let cmp = isComp ? 
-          value(node) : comp(node, value)
-        if (cmp > 0) {
-          atEnd = node
-          node = node[l]
-          continue
-        } 
-        if (start === -1 && cmp === 0) {
-          let nodeOffset = end + (node[d] >>> 2)
-          preStart = preEnd // !!
-          if (option === 'any') {
-            start = nodeOffset
-            end = nodeOffset + 1
-            atStart = node
-            preEnd = node
-            break loop
-          }
-          start = nodeOffset
-          atStart = node
-          if (option !== 'end') {
-            let offset = end
-            let node2 = node[l]
-            while (node2) {
-              let cmp = isComp ? 
-                value(node2) : comp(node2, value)
-              if (cmp < 0) {
-                offset += (node2[d] >>> 2) + 1
-                preStart = node2
-                node2 = node2[r]
-              } else {
-                start = offset + (node2[d] >>> 2)
-                atStart = node2
-                node2 = node2[l]
-              }
-            }
-            if (option === 'start') {
-              end = nodeOffset + 1
-              preEnd = node
-              break loop
-            }
-          }
+      while (node != null) {
+        let offset
+        let cmp 
+        if (from !== undefined) {
+          offset = end + (node[d] >>> 2)
+          cmp = offset < from ? -1 : offset >= upto ? 1 :
+            isComp ? value(node) : comp(node, value)
+          if (cmp > 0) {
+            atEnd = node
+            node = node[l]
+            continue
+          }               
+        } else {
+          cmp = isComp ? value(node) : comp(node, value)
+          if (cmp > 0) {
+            atEnd = node
+            node = node[l]
+            continue
+          }  
+          offset = end + (node[d] >>> 2)
         }
-        end += (node[d] >>> 2) + 1
+        if (start === -1 && cmp === 0) {
+          root = atStart = node
+          rootOffset = start = offset
+          rootBase = end
+          preStart = preEnd // !!
+          if (part === 'any' || part === 'start') break
+        }
+        end = offset + 1
         preEnd = node
         node = node[r]
       }
-      if (start === -1) {
-        start = end
-        preStart = preEnd
-        atStart = atEnd
-      }
-      return {
-        start, end, 
-        preStart, atStart, 
-        preEnd, atEnd 
-      }
+      return findRangeV8Plz(isComp, value, part,
+        from, start, preStart, atStart, end, 
+        preEnd, atEnd, root, rootOffset, rootBase)
     } 
 
     enumerate(a, b, c) {
@@ -662,7 +686,9 @@ export class IndexIterator {
     return ret
   }
   static from(iterable) {
-    if (iterable.nextValue) {
+    if (iterable == null) {
+      return new IndexIterator()
+    } else if (iterable.nextValue) {
       return iterable
     } else if (Array.isArray(iterable)) {
       return new ArrayIterator(iterable)
@@ -804,7 +830,7 @@ class BufferedIterator extends IndexIterator {
       return ret
     }
     this.buffer = null
-  }  
+  } 
   toArray() {
     this.init()
     let { buffer, offset } = this
@@ -812,7 +838,7 @@ class BufferedIterator extends IndexIterator {
     this.buffer = null
     if (offset > 0) buffer.splice(0, offset)
     return buffer
-  } 
+  }
 }
 class GroupsIterator extends IndexIterator {
   constructor(rator, comparator) {

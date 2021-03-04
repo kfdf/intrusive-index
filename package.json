@@ -10,5 +10,8 @@
   },
   "keywords": [],
   "author": "kfdf",
-  "license": "MIT"
+  "license": "MIT",
+  "files": [
+    "index.d.ts"
+  ]
 }

@@ -3,7 +3,7 @@ export class IndexIterator<T> {
   next(): IteratorResult<T, undefined>
   [Symbol.iterator](): IndexIterator<T>
   static from<T>(iterable: Iterable<T>): IndexIterator<T>  
-  into<U>(callback: (generator: IndexIterator<T>) => U) : U
+  into<U>(callback: (rator: IndexIterator<T>) => U) : U
   toArray(): T[]
   forEach(callback: (value: T, i: number) => void): void
   reduce<U>(operation: (accum: U, value: T, i: number) => U, initial: U): U
@@ -21,20 +21,22 @@ export class IndexIterator<T> {
   segment(comparator: (a: T, b: T) => number): IndexIterator<IndexIterator<T>>
   group(comparator: (a: T, b: T) => number): IndexIterator<IndexIterator<T>>
 }
-
 declare interface Range<T> {
   start: number
   end: number
   atStart: T | undefined
   preEnd: T | undefined
+  root: T | undefined
+  rootOffset: number
+  rootBase: number  
 }
-declare type FullRange<T, O> = 
+export type FullRange<T, O> = 
   O extends 'full' ? Range<T> & { preStart: T | undefined; atEnd: T | undefined } :
   O extends 'start' ? Range<T> & { preStart: T | undefined } :
   O extends 'end' ? Range<T> & { atEnd: T | undefined } : Range<T>
 
 declare type Order = 'asc' | 'desc'
-declare type RangeOption = 'any' | 'start' | 'end' | 'full'
+declare type RangePart = 'any' | 'start' | 'end' | 'full'
 export interface IntrusiveIndex<T extends U, U = T> {
   readonly comp: (a: U, b: U) => number
   readonly size: number
@@ -47,8 +49,10 @@ export interface IntrusiveIndex<T extends U, U = T> {
   get(key: U): T | undefined
   get(comparator: (a: U) => number): T | undefined
   getAt(offset: number): T | undefined
-  findRange<O extends RangeOption = 'full'>(comparator: (a: U) => number, option?: O): FullRange<T, O>
-  findRange<O extends RangeOption = 'any'>(key: U, option?: O): FullRange<T, O>
+  findRange<O extends RangePart = 'full'>(comparator: (a: U) => number, 
+    part?: O, start?: number, end?: number): FullRange<T, O>
+  findRange<O extends RangePart = 'any'>(key: U, 
+    part?: O, start?: number, end?: number): FullRange<T, O>
   enumerate(start: number, end: number, order?: Order): IndexIterator<T>
   enumerate(start: number, order?: Order): IndexIterator<T>
   enumerate(order?: Order): IndexIterator<T>
