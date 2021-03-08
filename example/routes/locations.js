@@ -116,7 +116,8 @@ function* listView({ title, locations, page, pageCount }) {
       </ul>
       <div class="${gotoLinkRoot}">
         Go to the <a href="/characters">characters</a>,
-        <a href="/games">games</a> or 
+        <a href="/games">games</a>,
+        <a href="/search">search</a> or 
         <a href="/edit">editing</a>
       </div>
     </main>

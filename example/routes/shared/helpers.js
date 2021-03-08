@@ -67,7 +67,9 @@ export function handleDbErrors(err, req, res, next) {
         case db.setting.pk:
         case db.species.pk:
         case db.title.pk:
-        case db.image.pk: throw 'route'
+        case db.image.pk: 
+          if (err.details.operation != 'add') throw 'route'
+          throw 'An item with such Id already exists'
         case db.character.nameUx:
           // forms map to tables so it's ok to do it here
           res.locals.errors.name = 'A character with such name already exists'

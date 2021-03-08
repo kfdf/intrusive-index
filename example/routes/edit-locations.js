@@ -3,7 +3,7 @@ import * as db from '../db/index.js'
 import { pageSize } from '../config.js'
 import { render, html } from './shared/render.js'
 import { catchRerender, handleDbErrors, validate } from './shared/helpers.js'
-import { newLinesRoot, paginator, deleteView, operationsRoot, formRoot, genericListLayout, editLayout, gotoLinkRoot } from './shared/common.js'
+import { newLinesRoot, paginator, deleteView, operationsRoot, formRoot, genericListLayout, editLayout, gotoLinkRoot, tableRoot } from './shared/common.js'
 import { enumeratePage, countPages, pageOf } from '../db/query-helpers.js'
 
 let locations = express.Router()
@@ -33,7 +33,7 @@ locations.get('/',
 function beginPostHandling(req, res, next) {
   validate(req, res)
     .string('name', 'Name', { minLength: 1, maxLength: 100 })
-    .string('description', 'Description', { minLength: 1 })
+    .string('description', 'Description')
   for (let _ in res.locals.errors) throw 'rerender'
   next()
 }
@@ -185,16 +185,26 @@ function* indexView({ title, locations, pageCount, page }) {
   </div>`
   yield* paginator({ pageCount, page })
   yield html`
-  <ul>`
-  for (let { location, gameCount, charCount } of locations) {
+  <table class="${tableRoot}">
+    <thead><tr>
+      <th>Games</th>
+      <th>Chars</th>
+      <th>Name</th>
+    </tr></thead>
+    <tbody>`
+    for (let { location, gameCount, charCount } of locations) {
+      yield html`
+      <tr>
+        <td>${gameCount}</td>
+        <td>${charCount}</td>
+        <td><a href="/edit/locations/${location.locationId}">
+          ${location.name}
+        </a></td>
+      </tr>`
+    }
     yield html`
-    <li><a href="/edit/locations/${location.locationId}">
-      ${location.name
-    }</a> - g: ${gameCount}, ch: ${charCount}
-    </li>`
-  }
-  yield html`
-  </ul>`
+    </tbody>
+  </table>`
   yield* layout.footer()
 }
 /** @param {any} props */

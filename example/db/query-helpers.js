@@ -1,20 +1,17 @@
-import { IndexIterator } from './intrusive-index.js'
+import { Sequence } from './intrusive-index.js'
 import { pageSize } from '../config.js'
 export { DbError } from './dml-helpers.js'
 /** 
 @template T
 @template U
 @typedef {import('./intrusive-index.js').IntrusiveIndex<T, U>} IntrusiveIndex */
-export function generator(func) {
-  return rator => IndexIterator.from(func(rator))
-}
 
 /**
 @template T
 @param {number} page
 @param {number=} start
 @param {number=} end
-@returns {(index: IntrusiveIndex<T, any>) => IndexIterator<T>} */
+@returns {(index: IntrusiveIndex<T, any>) => Sequence<T>} */
 export function enumeratePage(page, start, end) {
   return index => {
     if (start === undefined) start = 0
@@ -48,4 +45,44 @@ export function by(selector) {
     let bv = selector(b)
     return av < bv ? -1 : av > bv ? 1 : 0
   }
+}
+
+/**
+@template T
+@template U
+@param {IntrusiveIndex<T, U>} index
+@param {(a: U, b: U) => number} comparator */
+function* segmentsGen(index, comparator, start = 0 , end = index.size) {
+  if (start >= end) return
+  let first = index.getAt(start)
+  while (true) {
+    // @ts-ignore
+    let r = index.findRange(a => comparator(a, first))
+    yield r
+    if (r.end >= end || r.atEnd === undefined) return
+    first = r.atEnd
+  }
+}
+/**
+@template T
+@template U
+@param {(a: U) => number} comparator
+@returns {(index: IntrusiveIndex<T, U>) => Sequence<import('../../index.js').FullRange<T, 'full'>>} */
+export function segmentRanges(comparator, start = 0, end = undefined) {
+  return index => Sequence
+    .from(segmentsGen(index, comparator, start, end))
+}
+
+/**
+@template T
+@template U
+@template V
+@param {Iterable<U>} iterable
+@param {(a: T, b: U) => V} selector
+@returns {(index: Sequence<T>) => Sequence<V>} */
+export function zip(iterable, selector) {
+  let seq2 = Sequence.from(iterable)
+  return seq => seq   // somewhat brittle code...
+    .map(a => selector(a, seq2.nextValue()))
+    .concat(seq2.map(a => selector(undefined, a)))
 }

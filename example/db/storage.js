@@ -15,7 +15,7 @@ export async function* readLines(file) {
     tail = lines.pop()
     yield lines
   }
-  if (tail) throw 'Expected new line at the end of ' + file
+  if (tail) throw 'Expected a new line at the end of ' + file
 }
 function deserializeValue(value) {
   if (typeof value !== 'string' ||
@@ -25,6 +25,7 @@ function deserializeValue(value) {
   if (value.startsWith('#')) return value
   return new Date(Date.parse(value + 'T00:00Z'))
 }
+
 export function serializeValue(value) {
   if (value === undefined) {
     return '#'
@@ -37,10 +38,9 @@ export function serializeValue(value) {
   return value
 }
 
-export async function loadTable(table) {
-  let { Row, pk, keyLength, fileName } = table
-  let indexes = Object.values(table)
-    .filter(v => v !== pk && v.constructor.name === 'IntrusiveIndex')
+export async function loadTable({ Row, pk, keyLength, fileName, ...rest}) {
+  let indexes = Object.values(rest)
+    .filter(v => v.constructor.name === 'IntrusiveIndex')
   let rowNumber = 0
   try {
     let tableFile = join(dataFolder, fileName + '.csv')
@@ -50,6 +50,7 @@ export async function loadTable(table) {
         let values = JSON.parse(`[${line}]`)
         let row = new Row()
         let i = 0
+        // recods that are keyLength long are used to delete rows
         if (values.length === keyLength) {
           for (let prop in row) {
             row[prop] = deserializeValue(values[i++])
@@ -63,6 +64,9 @@ export async function loadTable(table) {
             row[prop] = value === undefined ? old[prop] : value
             if (i == keyLength) old = pk.insert(row)
           }
+          // keyLength can be larger than column count,
+          // small hack to handle when the primary key 
+          // columns span the entire table
           if (i < keyLength) pk.insert(row)
         }
       }
@@ -76,13 +80,11 @@ export async function loadTable(table) {
     for (let i = 0; i < indexes.length; i++) {
       if (!indexes[i].add(row)) throw {
         message: `failed to add a row"`,
-        table, indexNumber: i, row
+        fileName, indexNumber: i, row
       }
     }
   } 
 }
-
-
 let cooldown = false
 let queues = new Map()
 let lastUpdated = Date.now()

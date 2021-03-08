@@ -1,4 +1,4 @@
-import { IndexIterator } from './intrusive-index.js'
+import { Sequence } from './intrusive-index.js'
 import { Transaction } from './index.js'
 
 /** 
@@ -44,7 +44,7 @@ export function addRow(tr, index, row, failureIsFatal = false) {
 @param {T} row 
 @param {boolean} failureIsFatal
 @returns {T} */
-export function getReplaced(tr, index, row,  failureIsFatal = false) {
+export function getReplaced(tr, index, row, failureIsFatal = false) {
   let replaced = tr.insert(index, row)
   if (!replaced) fail({
     reason: 'requested', operation: 'replace', index, row
@@ -53,7 +53,7 @@ export function getReplaced(tr, index, row,  failureIsFatal = false) {
   return replaced
 }
 /** 
-A pretty important method, illustrates how to update rows.
+A pretty important method, highlights how to update rows.
 `old` argument can be null to facilitate upserts.
 Perhaps it should have been a part of the TransactionBase class.
 @template T
@@ -102,7 +102,11 @@ export function deleteRow(tr, index, row, failureIsFatal = false) {
   }, failureIsFatal)
 }
 /**
-merging rows can be quite a frequent operation, 
+Does the same as this:
+for (let key in target) {
+  if (target[key] === undefined) target[key] = source[key]
+}
+Merging rows can be quite a frequent operation, 
 and using `for in` loop is comparatively slow, so this
 factory creates efficient merger for a particular type
 @template T
@@ -155,17 +159,17 @@ function* getBatches(index, predicate) {
   }
 }
 /**
-Find rows one by one for modification is slow,
+Getting rows one by one for modification is slow,
 enumerating while modifying breaks things, so the
-easiest solution extract rows from a range in small 
-batches. This method assumes the range it enumerates
-will eventually dissapear, or it will loop forever.
+easiest solution is to extract rows from a range in small 
+batches. This method assumes that the range it gets its 
+batches from will eventually disappear, or it will loop forever.
 @template T
 @template U
 @param {(a: U) => number} comparator
-@returns {(index: IntrusiveIndex<T, U>) => IndexIterator<T>} */
+@returns {(index: IntrusiveIndex<T, U>) => Sequence<T>} */
 export function batches(comparator) {
-  return index => IndexIterator
+  return index => Sequence
     .from(getBatches(index, comparator))
     .flatten()
 }

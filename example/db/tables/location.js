@@ -3,6 +3,7 @@ import * as db from '../index.js'
 import { compareStringsIgnoreCase } from '../comparators.js'
 import { addRow, deleteRow, batches, getDeleted, getReplaced, replaceRow } from '../dml-helpers.js'
 import { numberType, stringType } from '../type-hints.js'
+import { updateInvertedIndex } from '../views/inv-index.js'
 
 export function Row({ 
   locationId = numberType, 
@@ -39,6 +40,8 @@ export function create(tr, { name, description }) {
   let row = new Row({ locationId, name, description })
   addRow(tr, nameUx, row)
   addRow(tr, pk, row, true)
+  updateInvertedIndex(tr, 'loc', 
+    row.locationId, null, row.description)
   return row
 }
 
@@ -50,6 +53,8 @@ export function update(tr, values) {
   let old = getReplaced(tr, pk, row)
   replaceRow(tr, nameUx, row, old)
   db.settingDen.updateLocation(tr, row)
+  updateInvertedIndex(tr, 'loc', 
+    row.locationId, old.description, row.description)
   return row
 }
 
@@ -67,4 +72,6 @@ export function remove(tr, key) {
   db.setting.pk
     .into(batches(a => pk.comp(a, row)))
     .forEach(s => db.setting.remove(tr, s))
+  updateInvertedIndex(tr, 'loc', 
+    row.locationId, row.description, null)
 }

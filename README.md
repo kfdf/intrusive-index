@@ -14,7 +14,7 @@ npm install intrusive-index
 ## Example Usage
 
 ```js
-import { IndexIterator, IIA, IIB, IIC } from 'intrusive-index'
+import { Sequence, IIA, IIB, IIC } from 'intrusive-index'
 
 let depPk = new IIA((a, b) => 
   a.depId - b.depId)
@@ -71,7 +71,7 @@ depPk
 
 console.log('List of employees who report to employee #4')
 function prepend(value) {
-  return rator => IndexIterator.from([value, rator]).flatten()
+  return rator => Sequence.from([value, rator]).flatten()
 }
 function getSubordinates(a) {
   return empManagerIx
@@ -102,7 +102,7 @@ The API is small, low level and somewhat footguny, so the `example` folder in th
 
 ## Library Classes
 
-The library exposes three classes and two methods. The primary class is `IntrusiveIndex`, the two helper classes are `IndexIterator` and `TransactionBase`, they can assist with data querying and editing. The two methods, that are probably are never needed, are `constructorFactory` which is the default export and `createFactory`. The library doesn't explicitly throw any errors. All methods and functions are synchronous.
+The library exposes three classes and two methods. The primary class is `IntrusiveIndex`, the two helper classes are `Sequence` and `TransactionBase`, they can assist with data querying and editing. The two methods, that are probably are never needed, are `constructorFactory` which is the default export and `createFactory`. The library doesn't explicitly throw any errors. All methods and functions are synchronous.
 
 ## IntrusiveIndex
 
@@ -237,10 +237,10 @@ while (start < end--) index.deleteAt(start)
 ### enumerate
 ```js
 type Order = 'asc' | 'desc'
-enumerate(start: number, end: number, order?: Order): IndexIterator<TValue>
-enumerate(start: number, order?: Order): IndexIterator<TValue>
-enumerate(order?: Order): IndexIterator<TValue>
-enumerate(comparator: (a: TKey) => number, order?: Order): IndexIterator<TValue>
+enumerate(start: number, end: number, order?: Order): Sequence<TValue>
+enumerate(start: number, order?: Order): Sequence<TValue>
+enumerate(order?: Order): Sequence<TValue>
+enumerate(comparator: (a: TKey) => number, order?: Order): Sequence<TValue>
 ```
 
 The default order of enumeration is `asc`. For overloads that use range bounds, the interval for enumeration ranges from `start` *including* to `end` *excluding*. So, for a given comparator and order these two approaches are functionaly the same:
@@ -260,16 +260,16 @@ depPk.enumerate().forEach(({ depPk }) =>
 ```
 
 ----------------
-## IndexIterator
+## Sequence
 
-`IndexIterator` is returned when enumerating an index, it has methods to build linq-like queries for some common operations, like joins (inner and outer) and sorts, but using its functionality is strictly optional. In the end `IndexIterator` is just an iterable so any similar library can be used to query the data. The sequences returned by the  build-in methods behave like one would expect typical linq-like sequences to behave. They are lazy, streaming and try not to buffer data when possible. There are two kinds of methods of this class, some methods create a new sequence from the current, and others execute (or consume) it.
+`Sequence` is returned when enumerating an index, it has methods to build linq-like queries for some common operations, like joins (inner and outer) and sorts, but using its functionality is strictly optional. In the end `Sequence` is just an iterable so any similar library can be used to query the data. The sequences returned by the  build-in methods behave like one would expect typical linq-like sequences to behave. They are lazy, streaming and try not to buffer data when possible. There are two kinds of methods of this class, some methods create a new sequence from the current, and others execute (or consume) it.
 
 --------------
 ### nextValue
 ```js
 nextValue(): T | undefined
 ```
-This method returns the next value if it is available, or `undefined` otherwise.  While the standard `next` method seems to be heavily optimized, there seem to cases when it has some non-trivial overhead. So, to be on the safe side `nextValue` is used internally by the `IndexIterator` instances.
+This method returns the next value if it is available, or `undefined` otherwise.  While the standard `next` method seems to be heavily optimized, there seem to cases when it has some non-trivial overhead. So, to be on the safe side `nextValue` is used internally by the `Sequence` instances.
 
 -------------
 ### consumers
@@ -284,10 +284,10 @@ These three methods consume the underlying sequence and produce some sort of a r
 ----------
 ### map/filter/concat
 ```js
-map<U>(transform: (value: T, i: number) => U): IndexIterator<U>
-filter(predicate: (value: T, i: number) => boolean): IndexIterator<T>
-concat(value: T): IndexIterator<T>
-concat(value: Iterable<T>): IndexIterator<T>
+map<U>(transform: (value: T, i: number) => U): Sequence<U>
+filter(predicate: (value: T, i: number) => boolean): Sequence<T>
+concat(value: T): Sequence<T>
+concat(value: Iterable<T>): Sequence<T>
 ```
 
 These should be familiar from their array counterparts.
@@ -295,8 +295,8 @@ These should be familiar from their array counterparts.
 -------------
 ### skip/take
 ```js
-skip(count: number): IndexIterator<T>
-take(count: number): IndexIterator<T>
+skip(count: number): Sequence<T>
+take(count: number): Sequence<T>
 ```
 
 Should be obvious what these do. `take` is the only build-in method that may leave the underlying sequence not completely iterated over.
@@ -304,30 +304,31 @@ Should be obvious what these do. `take` is the only build-in method that may lea
 ------------
 ### flatten
 ```js
-flatten(): IndexIterator<T extends Iterable<infer U> ? U : T>
+flatten(): Sequence<T extends Iterable<infer U> ? U : T>
 ```
+String is not an iterable
 Flattens the sequence one level deep. Is used for joins.
 
 ------------
 ### fallback
 ```js
-fallback<U>(value: U) : IndexIterator<T> | IndexIterator<U>
+fallback<U>(value: U) : Sequence<T> | Sequence<U>
 ```
 Returns a singleton sequence with the provided value if the sequence is empty. Is used for outer joins.
 
 ------------
 ### sort/reverse
-```js
-sort(comparator: (a: T, b: T) => number): IndexIterator<T>
-reverse(): IndexIterator<T>
+```ts
+sort(comparator: (a: T, b: T) => number): Sequence<T>
+reverse(): Sequence<T>
 ```
 These two buffer the underlying sequence, so they shouldn't be used for large sequences.
 
 ------------
 ### segment/group
-```js
-segment(comparator: (a: T, b: T) => number): IndexIterator<IndexIterator<T>>
-group(comparator: (a: T, b: T) => number): IndexIterator<IndexIterator<T>>
+```ts
+segment(comparator: (a: T, b: T) => number): Sequence<Sequence<T>>
+group(comparator: (a: T, b: T) => number): Sequence<Sequence<T>>
 ```
 The `segment` method segments the underlying sequence into subsequences by the provided comparator, so that for any two items in a subsequence the comparator returns zero. `segment` is a "lightweight" version of `group` that should be used when the sequence is already sorted according to the same comparator. `group` is literally just a shortcut for `sort(comparator).segment(comparator)`. If a subsequence is consumed before the next one is requested, then no buffering occurs. If only the first or the last item is needed `reduce` can be used to efficiently consume subsequences:
 ```js
@@ -341,7 +342,7 @@ The `segment` method segments the underlying sequence into subsequences by the p
 ------------
 ### into
 ```js
-into<U>(callback: (rator: IndexIterator<T>) => U) : U
+into<U>(callback: (rator: Sequence<T>) => U) : U
 ```
 Calls the provided fallback with the current sequence as the first argument and returns the result. `IntrusiveIndex` has the same method that does the same thing. Can be used to provide custom logic or to switch over to another query library altogether.
 
@@ -354,11 +355,11 @@ index.enumerate()
 -----------
 ### from
 ```js
-static from<T>(iterable: Iterable<T>): IndexIterator<T>  
+static from<T>(iterable: Iterable<T>): Sequence<T>  
 ```
-Wraps an iterable into a `IndexIterator` object.
+Wraps an iterable into a `Sequence` object.
 ```js
-IndexIterator.from([[1, 2], 3]).flatten().toArray() // [1, 2, 3]
+Sequence.from([[1, 2], 3]).flatten().toArray() // [1, 2, 3]
 ``` 
 
 ## TransactionBase 

@@ -3,6 +3,7 @@ import { compareStringsIgnoreCase } from '../comparators.js'
 import { createMerger, addRow, deleteRow, getReplaced, replaceRow, getDeleted, verifyFk, batches } from '../dml-helpers.js'
 import * as db from '../index.js'
 import { nullableNumberType, nullableStringType, numberType, stringType } from '../type-hints.js'
+import { updateInvertedIndex } from '../views/inv-index.js'
 
 export function Row({ 
   characterId = numberType, 
@@ -75,6 +76,8 @@ export function create(tr, { name, age, occupation, abilities, description }) {
   addRow(tr, speciesFk, row, true)
   addRow(tr, locationFk, row, true)
   addRow(tr, imageFk, row, true)
+  updateInvertedIndex(tr, 'char', 
+    row.characterId, null, row.description)
   return row
 }
 
@@ -96,6 +99,8 @@ export function update(tr, values) {
   replaceRow(tr, speciesFk, row, old, true)
   replaceRow(tr, locationFk, row, old, true)
   replaceRow(tr, imageFk, row, old, true)
+  updateInvertedIndex(tr, 'char', 
+    row.characterId, old.description, row.description)
   return row
 }
 /**
@@ -120,5 +125,7 @@ export function remove(tr, key) {
   deleteRow(tr, locationFk, row, true)
   deleteRow(tr, imageFk, row, true)
   deleteRow(tr, nameUx, row, true)
+  updateInvertedIndex(tr, 'char', 
+    row.characterId, row.description, null)
 }
 

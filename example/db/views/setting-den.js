@@ -1,7 +1,12 @@
 import { IIA, IIB, IIC, IID } from '../intrusive-index.js'
 import * as db from '../index.js'
 import { deleteRow, getDeleted, replaceRow } from '../dml-helpers.js'
-
+/*
+An example of a materialized view with denormalized data
+to make possible indexing accross several tables. Absolutely
+over the top for what it is supposed to do, like many
+of the things here, it's here just for illustrative purposes...
+*/
 function Row({
   location = /** @type {db.location.Row} */(null), 
   game = /** @type {db.game.Row} */(null),
@@ -15,7 +20,7 @@ function Row({
 /**
 @typedef RowKey
 @property {Pick<db.location.Row, 'locationId'>} location
-@property {Pick<db.game.Row, 'gameId'} game */
+@property {Pick<db.game.Row, 'gameId'>} game */
 
 /**
 @template T
@@ -53,7 +58,9 @@ export function updateLocation(tr, location) {
   pk.enumerate(a => db.location.pk.comp(a.location, location))
     .forEach(({ game }) => upsert(tr, { game, location }))
 }
-/** @param {Row} values */
+/** 
+@param {db.Transaction} tr
+@param {Row} values */
 export function upsert(tr, values) {
   let row = new Row(values)
   let old = tr.insert(pk, row)
@@ -61,7 +68,9 @@ export function upsert(tr, values) {
   replaceRow(tr, locGameDateIx, row, old, true)
   replaceRow(tr, gameLocationNameIx, row, old, true)
 }
-/** @param {RowKey} key */
+/** 
+@param {db.Transaction} tr
+@param {RowKey} key */
 export function remove(tr, key) {
   let row = getDeleted(tr, pk, key)
   deleteRow(tr, gameFk, row, true)

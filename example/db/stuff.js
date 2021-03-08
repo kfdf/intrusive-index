@@ -1,7 +1,8 @@
-import { IndexIterator } from '../../index.js'
+import { performance } from 'perf_hooks'
+import { Sequence } from './intrusive-index.js'
 import * as db from './index.js'
-import { by } from './query-helpers.js'
-db.species.pk
+import { by, zip } from './query-helpers.js'
+let arr = db.species.pk
   .enumerate()
   .map(species => db.character.speciesFk
     .enumerate(a => db.species.pk.comp(a, species))
@@ -10,20 +11,20 @@ db.species.pk
       .map(appearance => {
         let game = db.game.pk.get(appearance)
         return { species, character, appearance, game }
-      })
-    ).flatten()
-  ).flatten()
+      }))
+    .flatten())
+  .flatten()
   .map(a => a.species.name + ' ' + 
     a.character.name + ' in ' + a.game.name)
-  .into(rator => IndexIterator.from(function*() {
+  .into(rator => Sequence.from(function*() {
     while (true) {
       let batch = rator.take(100).toArray()
       if (batch.length == 0) break
       yield batch
     }
   }()))
-  .forEach(console.log)
-    
+  .forEach(arr => console.log(arr))
+   
 
 let chars = db.character.pk
   .enumerate()
@@ -41,5 +42,4 @@ let chars = db.character.pk
     .reduce((m, a) => m.order < a.order ? m : a))
   .sort(by(a => a.order))
   .map(a => a.char.name + ' (' + a.order + ')')
-  .toArray()
-console.log(chars)
+  .forEach(a => console.log(a))

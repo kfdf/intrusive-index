@@ -4,7 +4,7 @@ import * as db from '../db/index.js'
 import { deleteView, editLayout, figureRoot, formRoot, gotoLinkRoot, imageListRoot, paginator } from './shared/common.js'
 import { html, render } from './shared/render.js'
 import { enumeratePage, countPages, pageOf } from '../db/query-helpers.js'
-import { dataFolder, pageSize } from '../config.js'
+import { dataFolder } from '../config.js'
 import { join } from 'path'
 import { unlink, rename } from 'fs'
 import { handleDbErrors } from './shared/helpers.js'
@@ -106,8 +106,9 @@ images.post('/upload',
     form.parse(req, (err, fields, files) => {
       if (err) return next('Invalid request')
       let imageId = encodeURIComponent(files.image.name.replace(' ', '_'))
+      let image
       try { for (let tr of db.transaction()) {
-        db.image.create(tr, { 
+        image = db.image.create(tr, { 
           imageId, locked: true, refCount: 0
         })
       }} catch (err) {
@@ -129,7 +130,7 @@ images.post('/upload',
         if (err) {
           return next('Failed to create the image')
         } else {
-          let page = db.image.pk.into(pageOf({ imageId }))   
+          let page = db.image.isUsedIx.into(pageOf(image))   
           res.redirect('/edit/images?page=' + page)
         }
       })

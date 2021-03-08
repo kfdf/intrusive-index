@@ -2,6 +2,8 @@ import { IIA, IIB, IIC } from '../intrusive-index.js'
 import { createMerger, addRow, deleteRow, getReplaced, replaceRow, getDeleted, verifyFk, batches } from '../dml-helpers.js'
 import * as db from '../index.js'
 import { numberType, stringType, dateType, nullableStringType } from '../type-hints.js'
+import { compareDates } from '../comparators.js'
+import { updateInvertedIndex } from '../views/inv-index.js'
 
 export function Row({ 
   gameId = numberType, 
@@ -39,7 +41,7 @@ export const imageFk = new IIB((a, b) =>
   pk.comp(a, b))
 /** @type {GameIndex<'gameId' | 'date'>} */
 export const dateIx = new IIC((a, b) => 
-  +a.date - +b.date ||
+  compareDates(a.date, b.date) ||
   pk.comp(a, b))
 /**
 @param {db.Transaction} tr 
@@ -53,6 +55,8 @@ export function create(tr, { name, shortName, date, description }) {
   addRow(tr, pk, row, true)
   addRow(tr, imageFk, row, true)
   addRow(tr, dateIx, row, true)
+  updateInvertedIndex(tr, 'game', 
+    row.gameId, null, row.description)
   return row
 }
 
@@ -70,6 +74,8 @@ export function update(tr, values) {
   db.image.updateRefCounts(tr, row, old)
   replaceRow(tr, imageFk, row, old, true)
   replaceRow(tr, dateIx, row, old, true)
+  updateInvertedIndex(tr, 'game', 
+    row.gameId, old.description, row.description)
   return row
 }
 /**
@@ -89,4 +95,6 @@ export function remove(tr, key) {
   db.settingDen.updateGame(tr, row)
   deleteRow(tr, imageFk, row, true)
   deleteRow(tr, dateIx, row, true)
+  updateInvertedIndex(tr, 'game', 
+    row.gameId, row.description, null)
 }

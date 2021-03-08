@@ -10,6 +10,9 @@ export const verticalStackRoot = css`
 & > li > * {
   display: block;
 }
+& p {
+  margin-top: 0;
+}
 `
 export const gotoLinkRoot = css`
 & {
@@ -138,6 +141,20 @@ export const selectImageRoot = css`
 }
 & .default label {
   display: inline;
+}
+`
+export const tableRoot = css`
+& tr:nth-child(even){
+  background-color: #eef8ff;
+}
+
+& th.rotated {
+  transform: rotate(325deg) translateX(-0.5rem);
+  min-width: 1.5rem;
+  max-width: 1.5rem;
+  width: 1.5rem;
+  height: 2rem;
+  vertical-align: bottom;
 }
 `
 export const imageListRoot = css`
@@ -307,7 +324,7 @@ export function* paginator({ pageCount, page }) {
     } else {
       yield html`
       <span class="disabled">&gt;</span>`
-    } 
+    }
     yield html`
     <form method="GET" autocomplete="off">
       <label>
@@ -315,13 +332,13 @@ export function* paginator({ pageCount, page }) {
         <input type="text" name="page">
       </label>
       <button type="submit">Go</button>
-    </form>`    
+    </form>`
   }
   yield html`
   </div>`
 }
-export function* selectImageView({ title, 
-  imageId, images, page, pageCount 
+export function* selectImageView({ title,
+  imageId, images, page, pageCount
 }) {
   let layout = editLayout({ title })
   yield* layout.header()
@@ -331,7 +348,7 @@ export function* selectImageView({ title,
   yield html`
   <form method="POST" class="${selectImageRoot}">
     <div class="default">
-      <input type="radio" name="image" id="no-image" 
+      <input type="radio" name="image" id="no-image"
         value="" ${imageId ? '' : 'checked'}>
       <label for="no-image">No image</label>
     </div>
@@ -341,7 +358,7 @@ export function* selectImageView({ title,
       yield html`
       <div>
         <input ${imageId === image.imageId ? 'checked' : ''}
-          id="radio_${index}" name="image" 
+          id="radio_${index}" name="image"
           type="radio" value="${image.imageId}" >
         <label for="radio_${index}">
           <figure class="${figureRoot}">
@@ -381,7 +398,7 @@ export function genericListLayout({ title, pageCount, page }) {
           yield html`
           </ul>
         </main>
-      </div>`      
+      </div>`
     }
   }
 }

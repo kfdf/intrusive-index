@@ -146,50 +146,58 @@ function testQueries(index, set) {
     if (i < ref.length) return ref[i]
     return ref[ref.length - 1] + 1
   }
+  function getBound(i) {
+    if (random() < 0.5) return
+    return i + floor(random() * 11) - 5
+  }
   function testRange(i1, i2) {
     let descending = i1 > i2
     if (descending) [i1, i2] = [i2, i1]
     let v1 = getValue(i1)
     let v2 = getValue(i2)
     let comp = n => n.value < v1 ? -1 : n.value < v2 ? 0 : 1
-    for (let part of ['full', 'start', 'end', 'any']) {
-      let includesStart = part === 'full' || part === 'start'
-      let includesEnd = part === 'full' || part === 'end'
-      let b1 = random() < 0.5 ? undefined : i1 + floor(random() * 11) - 5
-      let b2 = random() < 0.5 ? undefined : i2 + floor(random() * 11) - 5
-      let r = index.findRange(comp, part, b1, b2)
-      if (b1 !== undefined || b2 !== undefined) {
-        if (b1 <= index.size) {
-          assert(r.start >= b1)
-          if (r.start < r.end) {
-            let a = index.getAt(b1)
-            if (r.start === b1) {
-              assert(comp(a) === 0)
-            } else if (a !== undefined) {
-              assert(includesStart ? comp(a) < 0 : comp(a) <= 0)
-            }
-          } 
+    for (let i = 0; i < 10; i++) {
+      for (let part of ['full', 'start', 'end', 'any']) {
+        let includesStart = part === 'full' || part === 'start'
+        let includesEnd = part === 'full' || part === 'end'
+        let b1 = getBound(i1)
+        let b2 = getBound(i2)
+        let r = index.findRange(comp, part, b1, b2)
+        if (b1 !== undefined || b2 !== undefined) {
+          if (b1 === undefined) b1 = 0
+          if (b2 === undefined) b2 = Infinity
+          if (b1 <= index.size) {
+            assert(r.start >= b1)
+            if (r.start < r.end) {
+              let a = index.getAt(b1)
+              if (r.start === b1) {
+                assert(comp(a) === 0)
+              } else if (a !== undefined) {
+                assert(includesStart ? comp(a) < 0 : comp(a) <= 0)
+              }
+            } 
+          }
+          if (0 <= b2 && b1 <= b2) {
+            assert(r.end <= b2)
+            if (r.start < r.end) {
+              let a = index.getAt(b2 - 1)
+              if (r.end === b2) {
+                assert(comp(a) === 0)
+              } else if (a !== undefined) {
+                assert(includesEnd ? comp(a) > 0 : comp(a) >= 0)
+              }
+            }          
+          }
         }
-        if (0 <= b2 && b1 <= b2) {
-          assert(r.end <= b2)
-          if (r.start < r.end) {
-            let a = index.getAt(b2 - 1)
-            if (r.end === b2) {
-              assert(comp(a) === 0)
-            } else if (a !== undefined) {
-              assert(includesEnd ? comp(a) > 0 : comp(a) >= 0)
-            }
-          }          
-        }
+        if (includesStart) {
+          assert(r.preStart === index.getAt(r.start - 1))
+        } 
+        assert(r.atStart === index.getAt(r.start))
+        assert(r.preEnd === index.getAt(r.end - 1))
+        if (includesEnd) {
+          assert(r.atEnd === index.getAt(r.end))    
+        } 
       }
-      if (includesStart) {
-        assert(r.preStart === index.getAt(r.start - 1))
-      } 
-      assert(r.atStart === index.getAt(r.start))
-      assert(r.preEnd === index.getAt(r.end - 1))
-      if (includesEnd) {
-        assert(r.atEnd === index.getAt(r.end))    
-      } 
     }
     let { start, end } = index.findRange(comp) 
     assert(start == min(max(0, i1), ref.length))
@@ -208,7 +216,7 @@ function testQueries(index, set) {
   testRange(index.size, -10)
   testRange(-10, -10)
   testRange(index.size + 10, index.size + 10)
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 10; i++) {
     let i1 = floor(random() * ref.length)
     let i2 = floor(random() * ref.length)
     testRange(i1, i1)

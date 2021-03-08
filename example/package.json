@@ -1,7 +1,7 @@
 {
   "name": "web-touhou",
   "version": "0.1.0",
-  "description": "",
+  "description": "touhou wiki",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "start": "node ."
   },
   "keywords": [],
-  "author": "",
+  "author": "kfdf",
   "dependencies": {
     "express": "^4.17.1",
     "formidable": "^1.2.2"

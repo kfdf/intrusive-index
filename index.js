@@ -52,7 +52,7 @@ export default function constructorFactory() {
     curr[d] = (diff += 4)
     if (result === UPD) return UPD
     if (result === ROT) {
-      curr[l] = left = rotate(left)
+      curr[l] = rotate(left)
       return UPD
     }
     if ((diff & 3) === 0) return ROT
@@ -360,7 +360,7 @@ export default function constructorFactory() {
       rootBase, root, rootOffset,
     }    
   }
-  class RangeIterator extends IndexIterator {
+  class RangeSequence extends Sequence {
     constructor(root, start, end, reversed) {
       super()
       let nodes = []
@@ -415,7 +415,7 @@ export default function constructorFactory() {
       return ret
     }
   }
-  class CompIterator extends IndexIterator {
+  class ComparatorSequence extends Sequence {
     constructor(root, comp, reversed) {
       super()
       let nodes = []
@@ -587,13 +587,13 @@ export default function constructorFactory() {
     enumerate(a, b, c) {
       let node = this.tempRoot || this.root[l]
       if (typeof a === 'function') {
-        return new CompIterator(node, a, b === 'desc')
+        return new ComparatorSequence(node, a, b === 'desc')
       } else if (typeof a !== 'number') {
-        return new RangeIterator(node, 0, Infinity, a === 'desc')
+        return new RangeSequence(node, 0, Infinity, a === 'desc')
       } else if (typeof b !== 'number') {
-        return new RangeIterator(node, a, Infinity, b === 'desc')
+        return new RangeSequence(node, a, Infinity, b === 'desc')
       } else {
-        return new RangeIterator(node, a, b, c === 'desc')
+        return new RangeSequence(node, a, b, c === 'desc')
       }
     }
     into(func) {
@@ -611,7 +611,7 @@ export default function constructorFactory() {
   }
 }
 
-export class IndexIterator {
+export class Sequence {
   nextValue() { }
   next() {
     let value = this.nextValue()
@@ -622,37 +622,37 @@ export class IndexIterator {
     return this
   }
   map(transform) {
-    return new MapIterator(this, transform)
+    return new MapSequence(this, transform)
   }
   filter(predicate) {
-    return new FilterIterator(this, predicate)
+    return new FilterSequence(this, predicate)
   }
   flatten() {
-    return new FlattenIterator(this)
+    return new FlattenSequence(this)
   }
   skip(count) {
-    return new SkipIterator(this, count)
+    return new SkipSequence(this, count)
   }
   take(count) {
-    return new TakeIterator(this, count)
+    return new TakeSequence(this, count)
   }
   fallback(value) {
-    return new FallbackIterator(this, value)
+    return new FallbackSequence(this, value)
   }
   segment(comparator) {
-    return new GroupsIterator(this, comparator)
+    return new SegmentSequence(this, comparator)
   }
   sort(comparator) {
-    return new SortIterator(this, comparator)
+    return new SortSequence(this, comparator)
   }
   reverse() {
-    return new ReverseIterator(this)
+    return new ReverseSequence(this)
   }
   group(comparator) {
     return this.sort(comparator).segment(comparator)
   }
   concat(value) {
-    return new ArrayIterator([this, value]).flatten()
+    return new ArraySequence([this, value]).flatten()
   }
   into(func) {
     return func(this)
@@ -687,31 +687,31 @@ export class IndexIterator {
   }
   static from(iterable) {
     if (iterable == null) {
-      return new IndexIterator()
+      return new Sequence()
     } else if (iterable.nextValue) {
       return iterable
     } else if (Array.isArray(iterable)) {
-      return new ArrayIterator(iterable)
+      return new ArraySequence(iterable)
     } else {
-      return new WrapperIterator(iterable)
+      return new WrapperSequence(iterable)
     }
   }
 }
 
-class WrapperIterator extends IndexIterator {
+class WrapperSequence extends Sequence {
   constructor(iterable) {
     super()
-    this.rator = iterable[Symbol.iterator]()
+    this.seq = iterable[Symbol.iterator]()
   }
   nextValue() {
-    let { rator } = this
-    if (rator === null) return
-    let { done, value } = rator.next()
+    let { seq } = this
+    if (seq === null) return
+    let { done, value } = seq.next()
     if (!done) return value
-    this.rator = null      
+    this.seq = null      
   }
 }
-class ArrayIterator extends IndexIterator {
+class ArraySequence extends Sequence {
   constructor(array) {
     super()
     this.array = array
@@ -721,38 +721,38 @@ class ArrayIterator extends IndexIterator {
     return this.array[this.offset++]
   }
 }
-class MapIterator extends IndexIterator {
-  constructor(rator, transform) {
+class MapSequence extends Sequence {
+  constructor(seq, transform) {
     super()
-    this.rator = rator
+    this.seq = seq
     this.transform = transform
     this.offset = 0
   }
   nextValue() {
-    let item = this.rator.nextValue()
+    let item = this.seq.nextValue()
     if (item === undefined) return
     return this.transform(item, this.offset++)
   }
 }
-class FilterIterator extends IndexIterator {
-  constructor(rator, predicate) {
+class FilterSequence extends Sequence {
+  constructor(seq, predicate) {
     super()
-    this.rator = rator
+    this.seq = seq
     this.predicate = predicate
     this.offset = 0
   }
   nextValue() {
-    let { rator, predicate } = this
+    let { seq, predicate } = this
     let item
-    while ((item = rator.nextValue()) !== undefined) {
+    while ((item = seq.nextValue()) !== undefined) {
       if (predicate(item, this.offset++)) return item
     }
   }
 }
-class FlattenIterator extends IndexIterator {
-  constructor(rator) {
+class FlattenSequence extends Sequence {
+  constructor(seq) {
     super()
-    this.rator = rator
+    this.seq = seq
     this.inner = null
   }
   nextValue() {
@@ -762,58 +762,59 @@ class FlattenIterator extends IndexIterator {
         if (item !== undefined) return item
         this.inner = null
       }
-      let item = this.rator.nextValue()
-      if (item == null) return item // !!!
-      if (item[Symbol.iterator]) {
-        this.inner = IndexIterator.from(item)
+      let item = this.seq.nextValue()
+      if (item != null && // !!!
+        item[Symbol.iterator] && 
+        typeof item !== 'string') {
+        this.inner = Sequence.from(item)
       } else {
         return item
       }
     }
   }
 }
-class SkipIterator extends IndexIterator {
-  constructor(rator, count) {
+class SkipSequence extends Sequence {
+  constructor(seq, count) {
     super()
-    this.rator = rator
+    this.seq = seq
     this.count = count
   }  
   nextValue() {
-    let { rator } = this
+    let { seq } = this
     while (--this.count >= 0) {
-      if (rator.nextValue() === undefined) return
+      if (seq.nextValue() === undefined) return
     }
-    return rator.nextValue()
+    return seq.nextValue()
   }
 }
-class TakeIterator extends IndexIterator {
-  constructor(rator, count) {
+class TakeSequence extends Sequence {
+  constructor(seq, count) {
     super()
-    this.rator = rator
+    this.seq = seq
     this.count = count
   }  
   nextValue() {
-    if (--this.count >= 0) return this.rator.nextValue()
+    if (--this.count >= 0) return this.seq.nextValue()
   }
 }
-class FallbackIterator extends IndexIterator {
-  constructor(rator, value) {
+class FallbackSequence extends Sequence {
+  constructor(seq, value) {
     super()
-    this.rator = rator
+    this.seq = seq
     this.value = value
   }
   nextValue() {
-    let { rator, value } = this
-    if (value === undefined) return rator.nextValue()
+    let { seq, value } = this
+    if (value === undefined) return seq.nextValue()
     this.value = undefined
-    let ret = rator.nextValue()
+    let ret = seq.nextValue()
     return ret === undefined ? value : ret
   }
 }
-class BufferedIterator extends IndexIterator {
-  constructor(rator) {
+class BufferedSequence extends Sequence {
+  constructor(seq) {
     super()
-    this.rator = rator
+    this.seq = seq
     this.buffer = null
     this.offset = 0
   }
@@ -840,56 +841,56 @@ class BufferedIterator extends IndexIterator {
     return buffer
   }
 }
-class GroupsIterator extends IndexIterator {
-  constructor(rator, comparator) {
+class SegmentSequence extends Sequence {
+  constructor(seq, comparator) {
     super()
-    this.rator = rator
+    this.seq = seq
     this.comparator = comparator
     this.inner = null
   }
   nextValue() {
-    let { inner, rator, comparator } = this
+    let { inner, seq, comparator } = this
     let first = undefined
     if (inner) {
       inner.init()
       first = inner.first
     } else {
-      first = rator.nextValue()
+      first = seq.nextValue()
     }
     if (first === undefined) {
       this.inner = null
     } else {
-      return this.inner = new GroupIterator(rator, comparator, first)      
+      return this.inner = new SubSequence(seq, comparator, first)      
     }
   }
 }
-class SortIterator extends BufferedIterator {
-  constructor(rator, comparator) {
-    super(rator)
+class SortSequence extends BufferedSequence {
+  constructor(seq, comparator) {
+    super(seq)
     this.comparator = comparator
   }
   init() {
-    if (this.buffer || !this.rator) return
-    this.buffer = this.rator.toArray().sort(this.comparator)
-    this.rator = null
+    if (this.buffer || !this.seq) return
+    this.buffer = this.seq.toArray().sort(this.comparator)
+    this.seq = null
   }
 }
-class ReverseIterator extends BufferedIterator {
+class ReverseSequence extends BufferedSequence {
   init() {
-    if (this.buffer || !this.rator) return
-    this.buffer = this.rator.toArray().reverse()
-    this.rator = null
+    if (this.buffer || !this.seq) return
+    this.buffer = this.seq.toArray().reverse()
+    this.seq = null
   }
 }
-class GroupIterator extends BufferedIterator {
-  constructor(rator, comparator, first) {
-    super(rator)
+class SubSequence extends BufferedSequence {
+  constructor(seq, comparator, first) {
+    super(seq)
     this.comparator = comparator
     this.first = first  
     this.firstStep = true
   }
   init() {
-    if (this.buffer || !this.rator) return
+    if (this.buffer || !this.seq) return
     let buffer = []
     let item
     while ((item = this.nextValue()) !== undefined) {
@@ -911,14 +912,14 @@ class GroupIterator extends BufferedIterator {
     } else if (this.firstStep) {
       this.firstStep = false
       return this.first
-    } else if (this.rator != null) {
-      let item = this.rator.nextValue()
+    } else if (this.seq != null) {
+      let item = this.seq.nextValue()
       if (item !== undefined && 
         this.comparator(this.first, item) === 0) {
         return item
       }
       this.first = item
-      this.rator = null
+      this.seq = null
     }
   }
 }
@@ -937,8 +938,8 @@ export function createFactory() {
   let end = source.lastIndexOf('}') 
   let body = source.slice(start, end)
   body = '/*' + factoryCount++ + '*/' + body
-  let factory = new Function(IndexIterator.name, body)
-  return () => factory(IndexIterator)  
+  let factory = new Function(Sequence.name, body)
+  return () => factory(Sequence)  
 }
 
 export class TransactionBase {

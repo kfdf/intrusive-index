@@ -4,8 +4,8 @@ import games from './routes/games.js'
 import characters from './routes/characters.js'
 import locations from './routes/locations.js'
 import edit from './routes/edit.js'
+import search from './routes/search.js'
 import { join } from 'path'
-import http from 'http'
 
 let app = express()
 let imagesFolder = join(config.dataFolder, 'images')
@@ -14,6 +14,7 @@ app.use('/games', games)
 app.use('/characters', characters)
 app.use('/locations', locations)
 app.use('/edit', edit)
+app.use('/search', search)
 app.get('/', (req, res) => res.redirect('/games'))
 
 app.listen(config.port, '127.0.0.1', () => {

@@ -1,10 +1,10 @@
 import * as tables from './tables/index.js'
 import * as views from './views/index.js'
 import { loadTable, addToSaveQueue, listImages } from './storage.js'
-import { TransactionBase, IIA, IIB, IIC, IID, IIE, IIF } from './intrusive-index.js'
+import { TransactionBase, IIA, IIB, IIC, IID, IIE, IIF, Sequence } from './intrusive-index.js'
+import { getWords, sentencesRanges } from './fts-helpers.js'
 export * from './tables/index.js'
 export * from './views/index.js'
-
 let pkIndex = new Map()
 for (let table of Object.values(tables)) {
   // @ts-ignore
@@ -14,26 +14,53 @@ for (let table of Object.values(tables)) {
 
 const idPool = []
 let topId = 1000
+/*
+If a table has an id field that is named after it,
+then this field is assumed to be the auto generated 
+primary key. A single id sequence provides id values
+for all the tables. `IdPool` holds the id values that 
+we used during cancelled transactions for later reuse.
+*/
 for (let [name, table] of Object.entries(tables)) {
-  if (table.keyLength != 1) continue
+  let idName = name + 'Id'
   let topRow = table.pk.getAt(table.pk.size - 1)
-  if (topRow == null) continue
-  topId = Math.max(topId, topRow[name + 'Id'])
+  if (topRow && idName in topRow) {
+    topId = Math.max(topId, topRow[idName])
+  }
 }
-
-export function* transaction(tr) {
+/*
+This function makes Transaction usable inside the `for of`
+loop. Exiting early, by throwing, breaking or returning
+causes a rollback. Unfortunately, there is no way
+to adjust this behavior, for instance to make an early 
+return to commit the transaction, or to shutdown if an error
+is fatal, as for some reason the `for of` loops do not use 
+the `throw` method of the generator, so there is no way to 
+find out what caused the premature exit, or catch an error inside
+the body of the generator function.
+Supports nested transactions, like so (not used in the example):
+for (let tr of db.transaction()) {
+  ...
+  for (let _ of db.transaction(tr)) {
+    ...
+    `return` or `throw` will rollback all transactions
+    `break` will rollback only the inner one
+  }
+}
+*/
+export function* transaction(tr = null) {
   if (tr) {
     tr.savepoint()
   } else {
     tr = new Transaction()
   }
-  let commited = false
+  let ranToCompletion = false
   try {
     yield tr
     tr.commit()
-    commited = true
+    ranToCompletion = true
   } finally {
-    if (commited) return
+    if (ranToCompletion) return
     tr.rollback()
   }
 }
@@ -115,6 +142,12 @@ export class Transaction extends TransactionBase {
 }
 
 let diffNames = [IIA.d, IIB.d, IIC.d, IID.d, IIE.d, IIF.d]
+/*
+Basic verification to assert that either all or none of
+the index-injected fields are in use. Not very robust 
+but catches the most common programming error: forgetting 
+to add or remove a row from all indexes of a table.
+*/
 function verifyRow(row) {
   if (row == null) return
   let first = null
@@ -128,11 +161,10 @@ function verifyRow(row) {
     process.exit()
   }
 }
-
 // @ts-ignore
 let imageList = await listImages()
 /*
-The views is not persisted, so when the data is loaded
+The views are not persisted, so when the data is loaded
 they have to be created manually, not ideal...
 */
 let tr = new Transaction()
@@ -165,6 +197,39 @@ try {
       .map(location => ({ game, location })))
     .flatten()
     .forEach(a => views.settingDen.upsert(tr, a))
+    
+  tables.game.pk
+    .enumerate()
+    .map(g => {
+      let id = g.gameId
+      let text = g.description
+      return { id, type: /** @type{'game'} */ ('game'), text }
+    })
+    .concat(tables.character.pk
+      .enumerate()
+      .map(ch => {
+        let id = ch.characterId
+        let text = ch.description
+        return { id, type: /** @type{'char'} */ ('char'), text }
+      }))
+    .concat(tables.location.pk
+      .enumerate()
+      .map(l => {
+        let id = l.locationId
+        let text = l.description
+        return { id, type: /** @type{'loc'} */ ('loc'), text }
+      }))
+    .map(({ id, type, text }) => Sequence
+      .from(sentencesRanges(text))
+      .map((r, pos) => Sequence
+        .from(getWords(text.slice(r.start, r.end)))
+        .map(word => ({ 
+          id, type, word, pos, 
+          sentenceStart: r.start, sentenceEnd: r.end,
+        })))
+      .flatten())
+    .flatten()
+    .forEach(a => views.invIndex.upsert(tr, a))
 } catch (err) {
   console.log(err)
   process.exit()

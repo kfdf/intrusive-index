@@ -1,5 +1,5 @@
 // @ts-check
-import { IndexIterator, IIA, IIB, IIC } from './index.js'
+import { Sequence, IIA, IIB, IIC } from './index.js'
 
 function Department(parentId, name) {
   this.depId = parentId
@@ -88,13 +88,13 @@ console.log(JSON.stringify(getEmplsTree(empPk.getAt(0)), null, 2))
 
 /**
 @param {Employee} manager
-@returns {IndexIterator<Employee>} */
+@returns {Sequence<Employee>} */
 function getEmplsFlat(manager) {
   return empManagerIx
     .enumerate(e => e.manager - manager.empId)
     .map(getEmplsFlat)
     .flatten()
-    .into(rator => IndexIterator.from([manager, rator]).flatten())
+    .into(rator => Sequence.from([manager, rator]).flatten())
 }
 getEmplsFlat(empPk.getAt(0))
   .map(emp => emp.name)

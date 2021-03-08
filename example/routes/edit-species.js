@@ -4,7 +4,7 @@ import { pageSize } from '../config.js'
 import { render, html } from './shared/render.js'
 import { enumeratePage, countPages, pageOf } from '../db/query-helpers.js'
 import { validate, catchRerender, handleDbErrors } from './shared/helpers.js'
-import { paginator, deleteView, formRoot, operationsRoot, genericListLayout, editLayout, gotoLinkRoot } from './shared/common.js'
+import { paginator, deleteView, formRoot, operationsRoot, genericListLayout, editLayout, gotoLinkRoot, tableRoot } from './shared/common.js'
 
 function getSpecies(req, res, next) {
   let speciesId = +req.params.id
@@ -212,16 +212,23 @@ function* indexView({ title, species, page, pageCount }) {
   </div>`
   yield* paginator({ page, pageCount })
   yield html`
-  <ul>`
-  for (let { sp, charCount } of species) {
+  <table class="${tableRoot}">
+    <thead><tr>
+      <th>Chars</th>
+      <th>Name</th>
+    </tr></thead>
+    <tbody>`
+    for (let { sp, charCount } of species) {
+      yield html`
+      <tr>
+        <td>${charCount}</td>
+        <td><a href="/edit/species/${sp.speciesId}">
+          ${sp.name
+        }</a></td>
+      </tr>`
+    }
     yield html`
-    <li>
-      <a href="/edit/species/${sp.speciesId}">
-        ${sp.name
-      }</a> - ch: ${charCount}
-    </li>`
-  }
-  yield html`
-  </ul>`
+    </tbody>
+  </table>`
   yield* layout.footer()
 }

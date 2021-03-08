@@ -1,10 +1,12 @@
 /*
-I actually don't like ejs, most notably that it sits in 
-separate files, also and I'm not on good terms with css, 
-espesially organizing it, so when I throw in some css rules
-I want them to be scoped to the component and only appear 
-on the page when if the component is used on the page. 
-This tiny framework does all that.
+Initially, this example used ejs for templating, but I've
+grown to dislike it. I like how it works, but not how it 
+looks and that it sits in separate files, and autocompletion
+doesn't work with it. Keeping stuff in js has its upsides. 
+Also I'm not on good terms with css, especially organizing it, 
+so when I throw in some css rules I want them to be scoped to 
+the component and only appear on a page if the component 
+is used on that page. This tiny framework does all that.
 */
 export function html(strings, ...args) {
   return { strings, args }

@@ -1,25 +1,24 @@
-export class IndexIterator<T> {
+export class Sequence<T> {
   nextValue(): T | undefined
   next(): IteratorResult<T, undefined>
-  [Symbol.iterator](): IndexIterator<T>
-  static from<T>(iterable: Iterable<T>): IndexIterator<T>  
-  into<U>(callback: (rator: IndexIterator<T>) => U) : U
+  [Symbol.iterator](): Sequence<T>
+  static from<T>(iterable: Iterable<T>): Sequence<T>  
+  into<U>(callback: (rator: Sequence<T>) => U) : U
   toArray(): T[]
   forEach(callback: (value: T, i: number) => void): void
   reduce<U>(operation: (accum: U, value: T, i: number) => U, initial: U): U
   reduce(operation: (accum: T, value: T, i: number) => T): T
-  map<U>(transform: (value: T, i: number) => U): IndexIterator<U>
-  filter(predicate: (value: T, i: number) => boolean): IndexIterator<T>
-  flatten(): IndexIterator<T extends Iterable<infer U> ? U : T>
-  skip(count: number): IndexIterator<T>
-  take(count: number): IndexIterator<T>
-  fallback<U>(value: U) : IndexIterator<T> | IndexIterator<U>
-  concat(value: T): IndexIterator<T>
-  concat(value: Iterable<T>): IndexIterator<T>
-  sort(comparator: (a: T, b: T) => number): IndexIterator<T>
-  reverse(): IndexIterator<T>
-  segment(comparator: (a: T, b: T) => number): IndexIterator<IndexIterator<T>>
-  group(comparator: (a: T, b: T) => number): IndexIterator<IndexIterator<T>>
+  map<U>(transform: (value: T, i: number) => U): Sequence<U>
+  filter(predicate: (value: T, i: number) => boolean): Sequence<T>
+  flatten(): Sequence<T extends Iterable<infer U> ? U : T>
+  skip(count: number): Sequence<T>
+  take(count: number): Sequence<T>
+  fallback<U>(value: U) : Sequence<T> | Sequence<U>
+  concat<U>(value: U): Sequence<U extends Iterable<infer V> ? T | V : T | U>
+  sort(comparator: (a: T, b: T) => number): Sequence<T>
+  reverse(): Sequence<T>
+  segment(comparator: (a: T, b: T) => number): Sequence<Sequence<T>>
+  group(comparator: (a: T, b: T) => number): Sequence<Sequence<T>>
 }
 declare interface Range<T> {
   start: number
@@ -53,10 +52,10 @@ export interface IntrusiveIndex<T extends U, U = T> {
     part?: O, start?: number, end?: number): FullRange<T, O>
   findRange<O extends RangePart = 'any'>(key: U, 
     part?: O, start?: number, end?: number): FullRange<T, O>
-  enumerate(start: number, end: number, order?: Order): IndexIterator<T>
-  enumerate(start: number, order?: Order): IndexIterator<T>
-  enumerate(order?: Order): IndexIterator<T>
-  enumerate(comparator: (a: U) => number, order?: Order): IndexIterator<T>
+  enumerate(start: number, end: number, order?: Order): Sequence<T>
+  enumerate(start: number, order?: Order): Sequence<T>
+  enumerate(order?: Order): Sequence<T>
+  enumerate(comparator: (a: U) => number, order?: Order): Sequence<T>
   into<K>(callback: (ii: IntrusiveIndex<T, U>) => K) : K
   setRoot(root: T): void
 }
