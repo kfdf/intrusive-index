@@ -8,7 +8,10 @@
     "test": "node tests.js",
     "bench": "node benchmarks.js"
   },
-  "keywords": [],
+  "keywords": [
+    "intrusive", "index", "tree", 
+    "in-memory", "sql", "database"
+  ],
   "author": "kfdf",
   "license": "MIT",
   "files": [

@@ -7,6 +7,25 @@ export const stopWords = new Set([
   'they', 'we', 'her', 'she', 'or', 'an',
   'will', 'my', 'would', 'there', 'their',
 ])
+/*
+The Occurences class represent the set of all sentences
+where a given word occurs. And the Intersection and Union 
+classes combine given set pairs according to their name. So when
+a search is performed these classes are organized into a tree 
+that yields its results in an iterator like manner. Currently,
+a search is done by matching all the specified terms or words 
+that start with them (a poor-man's replacement of stemming), 
+meaning that intersection nodes are at the top of the tree, 
+union nodes go below them, and occurences nodes are the leaves.
+More complex arrangements are possible, like when having some 
+search terms optional, they are just not implemented. 
+Two fundamental features of these classes is that every step 
+has an upper bound on the amount of work it performs, and a 
+step can advance to a given point. So that regardless of the data 
+the amount of work for a particular search can be capped, and the 
+search can be continued from any point without going through the 
+previous matches.
+*/
 export class Intersection {
   constructor(left, right, comparator) {
     this.comparator = comparator
@@ -155,5 +174,9 @@ export function getWords(sentence) {
   return []
 }
 export function normalize(text) {
+  /*
+  More things should happen here, 
+  like accent marks removal...
+  */
   return text.toLocaleLowerCase()
 }

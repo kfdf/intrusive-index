@@ -11,7 +11,6 @@ for (let table of Object.values(tables)) {
   await loadTable(table)
   pkIndex.set(table.pk, table)
 }
-
 const idPool = []
 let topId = 1000
 /*
@@ -35,9 +34,9 @@ causes a rollback. Unfortunately, there is no way
 to adjust this behavior, for instance to make an early 
 return to commit the transaction, or to shutdown if an error
 is fatal, as for some reason the `for of` loops do not use 
-the `throw` method of the generator, so there is no way to 
-find out what caused the premature exit, or catch an error inside
-the body of the generator function.
+the `throw` method of the generator, so there is no direct 
+way to find out what caused the premature exit, or catch an 
+error inside the body of the generator function.
 Supports nested transactions, like so (not used in the example):
 for (let tr of db.transaction()) {
   ...
@@ -143,10 +142,10 @@ export class Transaction extends TransactionBase {
 
 let diffNames = [IIA.d, IIB.d, IIC.d, IID.d, IIE.d, IIF.d]
 /*
-Basic verification to assert that either all or none of
-the index-injected fields are in use. Not very robust 
-but catches the most common programming error: forgetting 
-to add or remove a row from all indexes of a table.
+Basic and relatively cheap runtime check to assert that 
+either all or none of the index-injected fields are in use. 
+Not very robust but catches the most common programming error: 
+forgetting to add or remove a row from all indexes of a table.
 */
 function verifyRow(row) {
   if (row == null) return
@@ -164,8 +163,10 @@ function verifyRow(row) {
 // @ts-ignore
 let imageList = await listImages()
 /*
-The views are not persisted, so when the data is loaded
-they have to be created manually, not ideal...
+The views are not persisted, and when the data is loaded they 
+have to be created manually. So the view logic is dublicated, 
+during creating and when updating it. When it is simple it is 
+not much of a problem, but, of course, not ideal either...
 */
 let tr = new Transaction()
 try {

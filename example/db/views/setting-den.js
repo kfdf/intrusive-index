@@ -5,7 +5,7 @@ import { deleteRow, getDeleted, replaceRow } from '../dml-helpers.js'
 An example of a materialized view with denormalized data
 to make possible indexing accross several tables. Absolutely
 over the top for what it is supposed to do, like many
-of the things here, it's here just for illustrative purposes...
+of the things here, just for illustrative purposes...
 */
 function Row({
   location = /** @type {db.location.Row} */(null), 

@@ -1,8 +1,7 @@
-import { performance } from 'perf_hooks'
 import { Sequence } from './intrusive-index.js'
 import * as db from './index.js'
-import { by, zip } from './query-helpers.js'
-let arr = db.species.pk
+import { by } from './query-helpers.js'
+db.species.pk
   .enumerate()
   .map(species => db.character.speciesFk
     .enumerate(a => db.species.pk.comp(a, species))
@@ -26,7 +25,7 @@ let arr = db.species.pk
   .forEach(arr => console.log(arr))
    
 
-let chars = db.character.pk
+db.character.pk
   .enumerate()
   .map(char => db.appearance.pk
     .enumerate(a => db.character.pk.comp(a, char))

@@ -4,9 +4,9 @@ import * as db from '../index.js'
 import { createFactory } from '../intrusive-index.js'
 import { segmentRanges, zip } from '../query-helpers.js'
 import { numberType, stringType } from '../type-hints.js'
-import { performance } from 'perf_hooks'
 import { Sequence } from '../../../index.js'
 
+/* improves performance up to 50% */
 let IIA = createFactory()()
 
 export function Row({ 
@@ -18,6 +18,11 @@ export function Row({
   sentenceEnd = numberType
 }) {
   this.word = word
+/*
+This table has the potential to grow quite 
+large, so using so many fields to specify the 
+match position is quite excessive. But simple.
+*/
   this.type = type
   this.id = id
   this.pos = pos
@@ -53,6 +58,8 @@ export const invIndex = new IIA((a, b) =>
 @param {Row} values */
 export function upsert(tr, values) {
   let row = new Row(values)
+  // The table itself is used for string interning, so 
+  // there's no need to keep a separate table for words
   let any = invIndex.get(a => compareStringsOrdinal(a.word, values.word))
   if (any != null) values.word = any.word
   let old = tr.insert(invIndex, row)

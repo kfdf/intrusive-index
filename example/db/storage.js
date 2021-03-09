@@ -37,7 +37,17 @@ export function serializeValue(value) {
   }
   return value
 }
-
+/*
+The data for a table is stored in a separate file, it is typed,
+uses "undefined" (encoded as '#') values to denote holes in 
+"update" rows, and value count of a row indicates whether it's
+an insert or delete row.
+I think I would prefer all the data to be in the same file with 
+every row prefixed with all the relevant data (which table, 
+what operation, which fields are updated). And untyped, so that
+deserialization is performed by tables themselves, perhaps
+even in Row constructors. But it is what it is...
+*/
 export async function loadTable({ Row, pk, keyLength, fileName, ...rest}) {
   let indexes = Object.values(rest)
     .filter(v => v.constructor.name === 'IntrusiveIndex')
@@ -65,8 +75,8 @@ export async function loadTable({ Row, pk, keyLength, fileName, ...rest}) {
             if (i == keyLength) old = pk.insert(row)
           }
           // keyLength can be larger than column count,
-          // small hack to handle when the primary key 
-          // columns span the entire table
+          // small hack to handle situation when the primary 
+          // key columns span the entire table
           if (i < keyLength) pk.insert(row)
         }
       }

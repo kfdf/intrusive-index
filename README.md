@@ -97,20 +97,22 @@ The API is small, low level and somewhat footguny, so the `example` folder in th
 - No client-side scripting or even html validation, for illustrative purposes
 - No sessions
 - *Everything* is editable, but with the above limitations it can be awkward
+- All edits are validated, and any errors are reported to the user
+- Full text search, quite simplistic, but not useless
 - All changes are persisted in csv files
-- Pagination is really everywhere
+- Pagination is really everywhere, it is a fundamental feature
 
 ## Library Classes
 
-The library exposes three classes and two methods. The primary class is `IntrusiveIndex`, the two helper classes are `Sequence` and `TransactionBase`, they can assist with data querying and editing. The two methods, that are probably are never needed, are `constructorFactory` which is the default export and `createFactory`. The library doesn't explicitly throw any errors. All methods and functions are synchronous.
+The library exposes three classes and two methods. The primary class is `IntrusiveIndex`, the two helper classes are `Sequence` and `TransactionBase`, they can assist with data querying and editing. The two methods, that are probably are never needed, are `constructorFactory` which is the default export and `createFactory`. All methods and functions are synchronous, and never explicitly throw any errors.
 
 ## IntrusiveIndex
 
-IntrusiveIndex class is not exported directly, but variants of it can be created by `constructorFactory`, also six prefabricated constructors are provided for convenience. The index uses the modified AVL tree that additionally tracks items offsets. The class is generic. The generic parameters are `TValue` and `TKey`, so for the `empManagerIx` index the `TValue` type argument is `{ empId: number, depId: number, name: string, managerId: number }` and `TKey` is `{ managerId: number, empId: number }`. Actually, the type of the `managerId` field should be `number | null` but javascript coersion works well in this case converting nulls to zeroes and typescript can be overly pedantic.
+The `IntrusiveIndex` constructor is not exported directly, but variants of it can be created by `constructorFactory`, also six prefabricated constructors are provided for convenience. The index uses the modified AVL tree that additionally tracks items offsets. The class is generic. The generic parameters are `TValue` and `TKey`, so for the `empManagerIx` index the `TValue` type argument is `{ empId: number, depId: number, name: string, managerId: number }` and `TKey` is `{ managerId: number, empId: number }`. Actually, the type of the `managerId` field should be `number | null` but javascript coersion works well in this case converting nulls to zeroes and typescript can be overly pedantic.
 
--------------
 ### keys
-```js
+
+```ts
 static l: Symbol
 static r: Symbol
 static d: Symbol
@@ -118,7 +120,7 @@ static d: Symbol
 
 The index "injects" three fields into each item that is stored in it (so it adds 24 bytes per item, or 12 with pointer compression). The keys of the fields are exposed as static properties, with the inteded use is to "pre-initialize" items that will be added to the index to avoid additional internal allocations. So the above example is somewhat inefficient, a more proper way of creating rows is to add this boilerplate
 
-```js
+```ts
 function Employee(empId, depId, name, managerId) {
   this.empId = empId
   this.depId = depId
@@ -129,11 +131,12 @@ function Employee(empId, depId, name, managerId) {
   this[IIA.d] = this[IIB.d] = this[IIC.d] = -1
 }
 ```
+
 This creates a flat object that is (3 + 4 + 3 * 3) * 8 = 128 bytes in size. Property values don't seem to matter, but setting [d] to -1 can be used to verify that the row is properly added and removed from all indexes of a table. When a row is removed from an index (replaced or deleted) the [l] and [r] properties are set to null, and [d] is set to -1.
 
-----------
 ### constructor
-```js
+
+```ts
 constructor(comparator: (a: TKey, b: TKey) => number)
 comp: (a: TKey, b: TKey) => number
 ```
@@ -154,9 +157,9 @@ let childRows = childParentFk
 let parentRow = parentPk.get({ id: childRow.parentId })
 ```
 
------------
 ### size/clear
-```js
+
+```ts
 size: number
 clear(): void
 ```  
@@ -164,16 +167,17 @@ clear(): void
 These are pretty self-explanatory.
 
 ### add/insert
-```js
+
+```ts
 add(value: TValue): boolean
 insert(value: TValue): T | null
 ```
 
 The difference between these methods is what happens on conflict. `Add` does nothing and returns `false`, while `insert` replaces the item and returns it. 
 
-------------
 ### delete
-```js
+
+```ts
 delete(key: TKey): TValue | null
 delete(comparator: (a: TKey) => number): TValue | null
 deleteAt(offset: number): TValue | null
@@ -186,32 +190,36 @@ let departmentKey = { depId: 1 }
 let comparator = a => depPk.comp(a, departmentKey)
 while (empDepFk.delete(comparator)) ;
 ```
-------------
+
 ### get
+
 ```
 get(key: TKey): TValue | undefined
 get(comparator: (a: TKey) => number): TValue | undefined
 getAt(offset: number): TValue | undefined
 ```
+
 Should be obvious what these two do. Again, the one that takes a comparator gets any item from a range. Can be used to quickly test if the range is empty.
 
-------------
 ### findRange
-```js
+
+```ts
 type Range<TValue> = {  
   start: number, end: number,   
   preStart?: TValue, atStart: TValue,   
   preEnd: TValue, atEnd?: TValue   
 }  
-type TOption = 'full' | 'start' | 'end' | 'any'  
-findRange(comparator: (a: TKey) => number, option: TOption = 'full'): Range<TValue>
-findRange(key: TKey, option: TOption = 'any'): Range<TValue>
+type TPart = 'full' | 'start' | 'end' | 'any'  
+findRange(comparator: (a: TKey) => number, option: TPart = 'full', start?: number, end?: number): Range<TValue>
+findRange(key: TKey, option: TPart = 'any', start?: number, end?: number): Range<TValue>
 ```
-A multipurpose method that returns bounding offsets and elements of a given range. The `option` can be used to specify that only partial range is needed, that is, the returning `start` or/and `end` offsets don't lie at the exact edges of the range, but are somewhere inside of it. Also, the outlying elements of such offsets are unavailable. So for the `start` and `any` options there is no `atEnd`, and for `end` and `any` there is no `preStart`. If a full range is not empty then the partial range is guaranteed to be non-empty as well. Partial ranges are useful when only the first or last item of the range is needed, or to find the offset of an item, like so:
+
+A multipurpose method that returns bounding offsets and elements of a given range. The `start` and `end` optional arguments can be used to clamp, or localize, the search, so that the comparator will never be called for items outside of these bounds.  The `option` argument can be used to specify that only a partial range is needed, that is, the returning `start` or/and `end` offsets don't lie at the exact edges of the range, but are somewhere inside of it. Also, the outlying elements of such offsets are unavailable. So for the `start` and `any` options there is no `atEnd`, and for `end` and `any` there is no `preStart`. If a full range is not empty then the partial range is guaranteed to be non-empty as well. Partial ranges are useful when only the first or last item of the range is needed, or to find the offset of an item, like so:
+
 ```js
-let r = depPk.findRange({ depId: 2 }) // option defaults to `any` for an object
+let r = depPk.findRange({ depId: 2 }) // part defaults to `any` for an object
 if (r.start == r.end) {
-    // the range is empty, so item is not found 
+    // the range is empty, so the item is not found 
     // r.start points to where it would have been
 } else {    // r.start + 1 === r.end
     let offset = r.start
@@ -220,6 +228,7 @@ if (r.start == r.end) {
 ```
 
 For any range `r` retrieved from `index` the following is true:
+
 ```js
  index.getAt(r.start - 1) === r.preStart // when available
  index.getAt(r.start) === r.atStart
@@ -228,14 +237,15 @@ For any range `r` retrieved from `index` the following is true:
 ```
 
 `findRange` can be used to delete all items from a range:
+
 ```js
 let { start, end } = index.findRange(comparator)
 while (start < end--) index.deleteAt(start)
 ```
 
-------------
 ### enumerate
-```js
+
+```ts
 type Order = 'asc' | 'desc'
 enumerate(start: number, end: number, order?: Order): Sequence<TValue>
 enumerate(start: number, order?: Order): Sequence<TValue>
@@ -259,78 +269,81 @@ depPk.enumerate().forEach(({ depPk }) =>
     depPk.insert({ depPk, name: 'department #' + depPk }))
 ```
 
-----------------
 ## Sequence
 
 `Sequence` is returned when enumerating an index, it has methods to build linq-like queries for some common operations, like joins (inner and outer) and sorts, but using its functionality is strictly optional. In the end `Sequence` is just an iterable so any similar library can be used to query the data. The sequences returned by the  build-in methods behave like one would expect typical linq-like sequences to behave. They are lazy, streaming and try not to buffer data when possible. There are two kinds of methods of this class, some methods create a new sequence from the current, and others execute (or consume) it.
 
---------------
 ### nextValue
-```js
+
+```ts
 nextValue(): T | undefined
 ```
-This method returns the next value if it is available, or `undefined` otherwise.  While the standard `next` method seems to be heavily optimized, there seem to cases when it has some non-trivial overhead. So, to be on the safe side `nextValue` is used internally by the `Sequence` instances.
 
--------------
+This method returns the next value if it is available, or `undefined` otherwise. Used internally by the `Sequence` instances.
+
 ### consumers
-```js
+```ts
 toArray(): T[]
 forEach(callback: (value: T, i: number) => void): void
 reduce<U>(operation: (accum: U, value: T, i: number) => U, initial: U): U
 reduce(operation: (accum: T, value: T, i: number) => T): T
 ```
+
 These three methods consume the underlying sequence and produce some sort of a result. The `reduce` method of the standard array class throws an error when the array is empty and no `initialValue` is provided. The iterator method returns `undefined` instead.
 
-----------
 ### map/filter/concat
-```js
+
+```ts
 map<U>(transform: (value: T, i: number) => U): Sequence<U>
 filter(predicate: (value: T, i: number) => boolean): Sequence<T>
-concat(value: T): Sequence<T>
-concat(value: Iterable<T>): Sequence<T>
+concat<U>(value: U): Sequence<U extends Iterable<infer V> ? T | V : T | U>
 ```
 
 These should be familiar from their array counterparts.
 
--------------
+### flatten
+
+```ts
+flatten(): Sequence<T extends Iterable<infer U> ? U : T>
+```
+
+Flattens the sequence one level deep. Is used for joins. Both `concat` and `flatten` treat strings as *not* iterables.
+
 ### skip/take
-```js
+
+```ts
 skip(count: number): Sequence<T>
 take(count: number): Sequence<T>
 ```
 
 Should be obvious what these do. `take` is the only build-in method that may leave the underlying sequence not completely iterated over.
 
-------------
-### flatten
-```js
-flatten(): Sequence<T extends Iterable<infer U> ? U : T>
-```
-String is not an iterable
-Flattens the sequence one level deep. Is used for joins.
-
-------------
 ### fallback
-```js
+
+```ts
 fallback<U>(value: U) : Sequence<T> | Sequence<U>
 ```
+
 Returns a singleton sequence with the provided value if the sequence is empty. Is used for outer joins.
 
-------------
 ### sort/reverse
+
 ```ts
 sort(comparator: (a: T, b: T) => number): Sequence<T>
 reverse(): Sequence<T>
 ```
+
 These two buffer the underlying sequence, so they shouldn't be used for large sequences.
 
-------------
 ### segment/group
+
 ```ts
 segment(comparator: (a: T, b: T) => number): Sequence<Sequence<T>>
 group(comparator: (a: T, b: T) => number): Sequence<Sequence<T>>
 ```
+
 The `segment` method segments the underlying sequence into subsequences by the provided comparator, so that for any two items in a subsequence the comparator returns zero. `segment` is a "lightweight" version of `group` that should be used when the sequence is already sorted according to the same comparator. `group` is literally just a shortcut for `sort(comparator).segment(comparator)`. If a subsequence is consumed before the next one is requested, then no buffering occurs. If only the first or the last item is needed `reduce` can be used to efficiently consume subsequences:
+
 ```js
   // both consume the entire sequence and...
   .reduce((a, v) => a)  // returns the first item
@@ -339,11 +352,12 @@ The `segment` method segments the underlying sequence into subsequences by the p
   // as the subsequences are guaranteed to be non-empty
 ```
 
-------------
 ### into
-```js
+
+```ts
 into<U>(callback: (rator: Sequence<T>) => U) : U
 ```
+
 Calls the provided fallback with the current sequence as the first argument and returns the result. `IntrusiveIndex` has the same method that does the same thing. Can be used to provide custom logic or to switch over to another query library altogether.
 
 ```js
@@ -352,23 +366,25 @@ index.enumerate()
   .... 
 ```
 
------------
 ### from
-```js
+
+```ts
 static from<T>(iterable: Iterable<T>): Sequence<T>  
 ```
+
 Wraps an iterable into a `Sequence` object.
+
 ```js
 Sequence.from([[1, 2], 3]).flatten().toArray() // [1, 2, 3]
 ``` 
 
 ## TransactionBase 
 
-TransactionBase is small helper class. Since modifications are done not on tables as wholes, but on individual indexes, any operation must be a transaction. It must successfully perform all the actions or none at all. This class is an implemention of optimistic transaction. This class can only do its job if rows are immutable, so that any updates are replacements. This might not be the most efficient way of doing updates but it makes a whole lot of things easier to reason about.
+TransactionBase is small helper class. Since modifications are done not on tables as wholes, but on individual indexes, any operation must be a transaction. It must successfully perform all the actions or none at all. This class is an implemention of optimistic transaction. The fundamental assumption of this class is that the rows are immutable, so that any updates are replacements. This might not be the most efficient way of doing updates but it makes a whole lot of things easier to reason about.
 
-------------
 ### operations
-```js
+
+```ts
 add<T>(index: IntrusiveIndex<T, any>, value: T): boolean
 insert<T>(index: IntrusiveIndex<T, any>, value: T): T | null
 delete<T extends U, U>(index: IntrusiveIndex<T, U>, comparator: (a: U) => number): T | null
@@ -376,15 +392,16 @@ delete<T extends U, U>(index: IntrusiveIndex<T, U>, key: U): T | null
 deleteAt<T>(index: IntrusiveIndex<T, any>, offset: number): T | null
 ```
 
-These are the wrappers of the corresponding IntrusiveIndex methods that log what items where added/removed from what indexes, so if a rollback is requested, the journal is used to revert all (or some in case of nested transactions) the changes.
+These are the wrappers of the corresponding `IntrusiveIndex` methods that log what items where added/removed from what indexes, so if a rollback is requested, the journal is used to revert all (or some in case of nested transactions) the changes.
 
-----------
 ### rollback
-```js
+
+```ts
 savepoint(): void
 release(): void
 rollback(): boolean
 ```
+
 Savepoint and release can be used to create subtransactions, which will in case of an error, rollback to the nearest unreleased savepoint:
 
 ```js
@@ -401,9 +418,9 @@ function tryThis(tr) {
 
 If the rollback method can't complete it returns false. In this case the database should be considered to be in an invalid state and the app should simply shutdown.
 
-------------
 ### journal
-```js
+
+```ts
 journal: {
   savepoints: number[]
   indexes: IntrusiveIndex<any>[]
@@ -433,11 +450,10 @@ for (let i = 0; i < this.indexes.length; i++) {
 }
 ```
 
-------------
 ## constructorFactory
 
-The default export of the library. Creates variants of `IndexContructors`. The reasons to use it may be if more than six indexes per table is required, or to create separate groups of constructors for each table to make verification more robust.
+The default export of the library. Creates variants of `IndexContructor`. The reasons to use it may be if more than six indexes per table is required, or to create separate groups of constructors for each table to make verification more robust.
 
 ## createFactory
 
-This method should have been named `constructorFactoryFactory`. IIA, IIB ... IIF or any other manually created index constructors are created from the same source code, so working with different row types causes function calls to become megamorphic. It may be perfectly acceptable as the performance is cache dominated in typical scenarios, but it can be avoided if really nessesary. This method probably shouldn't be abused...
+This method should have been named `constructorFactoryFactory`. IIA, IIB ... IIF or any other manually created index constructors are created from the same source code, so working with different row types causes function calls to become megamorphic. It may be perfectly acceptable as the performance is typically cache dominated, but it can be avoided if really nessesary. This method probably shouldn't be abused...

@@ -107,6 +107,9 @@ images.post('/upload',
       if (err) return next('Invalid request')
       let imageId = encodeURIComponent(files.image.name.replace(' ', '_'))
       let image
+      // This double wrapping may look awful, but 
+      // actually not that different from the explicit 
+      // resource management proposal
       try { for (let tr of db.transaction()) {
         image = db.image.create(tr, { 
           imageId, locked: true, refCount: 0
@@ -117,7 +120,7 @@ images.post('/upload',
       let srcPath = files.image.path
       let dstPath = join(dataFolder, 'images', imageId)
       rename(srcPath, dstPath, err => {
-        try {for (let tr of db.transaction()) {
+        try { for (let tr of db.transaction()) {
           if (err) {
             db.image.remove(tr, { imageId })
           } else {
