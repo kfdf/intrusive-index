@@ -64,6 +64,10 @@ function* segmentsGen(index, comparator, start = 0 , end = index.size) {
   }
 }
 /**
+works similary to the segment method of the sequence class 
+but it operates directly on the index, so it doesn't have to 
+enumerate it to find segment bounds. The time complexity is 
+proportional to the number of segments, not values. Needed for FTS.
 @template T
 @template U
 @param {(a: U) => number} comparator

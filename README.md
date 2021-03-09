@@ -98,17 +98,18 @@ The API is small, low level and somewhat footguny, so the `example` folder in th
 - No sessions
 - *Everything* is editable, but with the above limitations it can be awkward
 - All edits are validated, and any errors are reported to the user
+- The database state (tables, views, fts) is updated immediately and synchronously
 - Full text search, quite simplistic, but not useless
 - All changes are persisted in csv files
 - Pagination is really everywhere, it is a fundamental feature
 
-## Library Classes
+## Library Exports
 
-The library exposes three classes and two methods. The primary class is `IntrusiveIndex`, the two helper classes are `Sequence` and `TransactionBase`, they can assist with data querying and editing. The two methods, that are probably are never needed, are `constructorFactory` which is the default export and `createFactory`. All methods and functions are synchronous, and never explicitly throw any errors.
+The library exposes three classes and two methods. The primary class is `IntrusiveIndex`, and the two helper classes are `Sequence` and `TransactionBase`, they can assist with data querying and editing. The two methods, that are probably are never needed, are `constructorFactory` which is the default export and `createFactory`. All methods and functions are synchronous, and never explicitly throw any errors.
 
 ## IntrusiveIndex
 
-The `IntrusiveIndex` constructor is not exported directly, but variants of it can be created by `constructorFactory`, also six prefabricated constructors are provided for convenience. The index uses the modified AVL tree that additionally tracks items offsets. The class is generic. The generic parameters are `TValue` and `TKey`, so for the `empManagerIx` index the `TValue` type argument is `{ empId: number, depId: number, name: string, managerId: number }` and `TKey` is `{ managerId: number, empId: number }`. Actually, the type of the `managerId` field should be `number | null` but javascript coersion works well in this case converting nulls to zeroes and typescript can be overly pedantic.
+The `IntrusiveIndex` constructor is not exported directly, but variants of it can be created by `constructorFactory`, also six prefabricated constructors are provided for convenience. The index uses the modified AVL tree that additionally tracks items offsets. All methods are non batching and have logarithmic complexity. The class is generic. The generic parameters are `TValue` and `TKey`, so for the `empManagerIx` index the `TValue` type argument is `{ empId: number, depId: number, name: string, managerId: number }` and `TKey` is `{ managerId: number, empId: number }`. Actually, the type of the `managerId` field should be `number | null` but javascript coersion works well in this case converting nulls to zeroes and typescript can be overly pedantic.
 
 ### keys
 
@@ -380,7 +381,7 @@ Sequence.from([[1, 2], 3]).flatten().toArray() // [1, 2, 3]
 
 ## TransactionBase 
 
-TransactionBase is small helper class. Since modifications are done not on tables as wholes, but on individual indexes, any operation must be a transaction. It must successfully perform all the actions or none at all. This class is an implemention of optimistic transaction. The fundamental assumption of this class is that the rows are immutable, so that any updates are replacements. This might not be the most efficient way of doing updates but it makes a whole lot of things easier to reason about.
+TransactionBase is small helper class. Since modifications are done not on tables as wholes, but on individual indexes, any operation must be a transaction. It must successfully perform all the actions or none at all. This class is an implemention of optimistic transaction. The fundamental assumption of this class is that the rows are immutable (at least with respect to the indexes they are added to), so that any updates are replacements. This might not be the most efficient way of doing updates but it makes a whole lot of things easier to reason about.
 
 ### operations
 

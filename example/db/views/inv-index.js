@@ -6,7 +6,7 @@ import { segmentRanges, zip } from '../query-helpers.js'
 import { numberType, stringType } from '../type-hints.js'
 import { Sequence } from '../../../index.js'
 
-/* improves performance up to 50% */
+// improves performance up to 50%
 let IIA = createFactory()()
 
 export function Row({ 
