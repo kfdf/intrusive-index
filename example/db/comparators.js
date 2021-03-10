@@ -1,7 +1,3 @@
-/*
-localeCompare with extra arguments 
-(locale/options) seems to be hideosly slow...
-*/
 /**
 @param {string} a
 @param {string} b */
@@ -11,6 +7,11 @@ export function compareStringsOrdinal(a, b) {
   return a < b ? -1 : a > b ? 1 : 0
 }
 /**
+This function should use localeCompare with
+explictly defined locale, but it seems to be
+hideosly slow, almost two orders of magnitude
+slower compared to when called without extra 
+parameters. So, ordinal comparision instead...
 @param {string} a
 @param {string} b */
 export function compareStrings(a, b) {

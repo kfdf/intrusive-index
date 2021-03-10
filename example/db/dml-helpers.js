@@ -54,7 +54,7 @@ export function getReplaced(tr, index, row, failureIsFatal = false) {
 }
 /** 
 A pretty important method, highlights how to update rows.
-`old` argument can be null to facilitate upserts.
+The `old` argument can be null to facilitate upserts.
 Perhaps it should have been a part of the TransactionBase class.
 @template T
 @template U

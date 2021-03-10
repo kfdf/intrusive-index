@@ -4,9 +4,10 @@ A data structure is intrusive if the information required to store the data is e
 
 ## Why
 
-To get some practice with web technologies, javascript, data structures, and I wanted a *simple* way to work with in-memory tabular data that allows efficient sql/linq-like querying, pagination and modification. The intention behind this library is to add indexes to in-memory tables with small overhead. 
+To get some practice with web technologies, javascript, data structures, and I wanted a *simple* way to work with in-memory tabular data that allows efficient sql/linq-like querying, pagination and modification. 
 
 ## Installation
+
 ```
 npm install intrusive-index
 ```
@@ -92,7 +93,7 @@ getSubordinates({ emp: empPk.get({ empId: 4 }) })
 
 ## Example Project
 
-The API is small, low level and somewhat footguny, so the `example` folder in the repository contains an express webapp - a toy touhou wiki. Initally I thought to implement the local libray example from MDN, but then I just happened on some data that I believe was scraped from Touhou Fandom Wiki somewhere around 2013 and put into an SQL Server. The data is small, just a few hundred rows accross all tables, but the example is written as if there were hundreds of thousands, or even millions of rows (the reasonable maximum for this sort of storage). So the features are:
+The API is small, low level and somewhat footguny, so the `example` folder in the repository contains an express webapp. Initally I thought to implement the local libray example from MDN, but then I just happened on some data that I believe was scraped from Touhou Fandom Wiki somewhere around 2013 and put into an SQL Server. Perhaps not the most suitable foundation for a CRUD app, but I *really* wanted to use the data... It is quite small, just a few hundred rows accross all the tables, but the example is written as if there were hundreds of thousands, or even millions of rows (the reasonable maximum for this sort of storage). So the features are:
 - Pagination everywhere
 - No client-side scripting or even html validation, for illustrative purposes
 - No sessions
@@ -101,15 +102,14 @@ The API is small, low level and somewhat footguny, so the `example` folder in th
 - The database state (tables, views, fts) is updated immediately and synchronously
 - Full text search, quite simplistic, but not useless
 - All changes are persisted in csv files
-- Pagination is really everywhere, it is a fundamental feature
 
 ## Library Exports
 
-The library exposes three classes and two methods. The primary class is `IntrusiveIndex`, and the two helper classes are `Sequence` and `TransactionBase`, they can assist with data querying and editing. The two methods, that are probably are never needed, are `constructorFactory` which is the default export and `createFactory`. All methods and functions are synchronous, and never explicitly throw any errors.
+The library exposes three classes and two methods. The primary class is `IntrusiveIndex`, and the two helper classes are `Sequence` and `TransactionBase`, they can assist with data querying and editing. The two methods, that are probably never needed, are `constructorFactory` which is the default export and `createFactory`. All methods and functions are synchronous, and never explicitly throw any errors.
 
 ## IntrusiveIndex
 
-The `IntrusiveIndex` constructor is not exported directly, but variants of it can be created by `constructorFactory`, also six prefabricated constructors are provided for convenience. The index uses the modified AVL tree that additionally tracks items offsets. All methods are non batching and have logarithmic complexity. The class is generic. The generic parameters are `TValue` and `TKey`, so for the `empManagerIx` index the `TValue` type argument is `{ empId: number, depId: number, name: string, managerId: number }` and `TKey` is `{ managerId: number, empId: number }`. Actually, the type of the `managerId` field should be `number | null` but javascript coersion works well in this case converting nulls to zeroes and typescript can be overly pedantic.
+The `IntrusiveIndex` constructor is not exported directly, but variants of it can be created by `constructorFactory`, also six prefabricated constructors are provided for convenience. The index uses the AVL tree that additionally tracks items offsets. All methods are non batching and have logarithmic time complexity. Declarations below make use of two generic parameters, `TValue` and `TKey`, which, for example, in case of the `empManagerIx` index are: `{ empId: number, depId: number, name: string, managerId: number }` and `{ managerId: number, empId: number }`. Actually, the type of the `managerId` field should be `number | null` but javascript coercion works well in this case converting nulls to zeroes and typescript can be overly pedantic.
 
 ### keys
 
@@ -121,7 +121,7 @@ static d: Symbol
 
 The index "injects" three fields into each item that is stored in it (so it adds 24 bytes per item, or 12 with pointer compression). The keys of the fields are exposed as static properties, with the inteded use is to "pre-initialize" items that will be added to the index to avoid additional internal allocations. So the above example is somewhat inefficient, a more proper way of creating rows is to add this boilerplate
 
-```ts
+```js
 function Employee(empId, depId, name, managerId) {
   this.empId = empId
   this.depId = depId
@@ -143,15 +143,20 @@ comp: (a: TKey, b: TKey) => number
 ```
 
 A comparator that is provided to define item ordering is also availabe as the `comp` property of the index. It can be used create unary comparators that define ranges in child tables, like so:
+
 ```js
 let childRows = childParentFk
   .enumerate(child => parentPk.comp(child, parentRow))
 ```
+
 Conversely, to `get` a parent row a child row can be used as the key:
+
 ```js
 let parentRow = parentPk.get(childRow)
 ```
+
 Such "natural" joins work if both tables are joined on the identically named columns, so primary keys should be prefixed with table names. Otherwise, these two examples would have been:
+
 ```js
 let childRows = childParentFk
   .enumerate(child => child.parentId - parentRow.id)
@@ -174,7 +179,7 @@ add(value: TValue): boolean
 insert(value: TValue): T | null
 ```
 
-The difference between these methods is what happens on conflict. `Add` does nothing and returns `false`, while `insert` replaces the item and returns it. 
+The difference between these methods is what happens on conflict. `add` does nothing and returns `false`, while `insert` replaces the item and returns it. 
 
 ### delete
 
@@ -194,13 +199,13 @@ while (empDepFk.delete(comparator)) ;
 
 ### get
 
-```
+```ts
 get(key: TKey): TValue | undefined
 get(comparator: (a: TKey) => number): TValue | undefined
 getAt(offset: number): TValue | undefined
 ```
 
-Should be obvious what these two do. Again, the one that takes a comparator gets any item from a range. Can be used to quickly test if the range is empty.
+Should be obvious what these two do. Again, the overload that takes a comparator gets any item from a range. Can be used to quickly test if the range is empty.
 
 ### findRange
 
@@ -211,11 +216,11 @@ type Range<TValue> = {
   preEnd: TValue, atEnd?: TValue   
 }  
 type TPart = 'full' | 'start' | 'end' | 'any'  
-findRange(comparator: (a: TKey) => number, option: TPart = 'full', start?: number, end?: number): Range<TValue>
-findRange(key: TKey, option: TPart = 'any', start?: number, end?: number): Range<TValue>
+findRange(comparator: (a: TKey) => number, part: TPart = 'full', start?: number, end?: number): Range<TValue>
+findRange(key: TKey, part: TPart = 'any', start?: number, end?: number): Range<TValue>
 ```
 
-A multipurpose method that returns bounding offsets and elements of a given range. The `start` and `end` optional arguments can be used to clamp, or localize, the search, so that the comparator will never be called for items outside of these bounds.  The `option` argument can be used to specify that only a partial range is needed, that is, the returning `start` or/and `end` offsets don't lie at the exact edges of the range, but are somewhere inside of it. Also, the outlying elements of such offsets are unavailable. So for the `start` and `any` options there is no `atEnd`, and for `end` and `any` there is no `preStart`. If a full range is not empty then the partial range is guaranteed to be non-empty as well. Partial ranges are useful when only the first or last item of the range is needed, or to find the offset of an item, like so:
+A multipurpose method that returns bounding offsets and elements of a given range. The `start` and `end` optional arguments can be used to clamp the result. Which also means that the comparator will never be called for items outside of these bounds.  The `part` argument can be used to specify that only a partial range is needed, that is, the returning `start` or/and `end` offsets don't lie at the exact edges of the range, but are somewhere inside of it. Also, the outlying elements of such offsets are unavailable. So for the `start` and `any` options there is no `atEnd`, and for `end` and `any` there is no `preStart`. If a full range is not empty then the partial range is guaranteed to be non-empty as well. Partial ranges are useful when only the first or last item of the range is needed, or to find the offset of an item, like so:
 
 ```js
 let r = depPk.findRange({ depId: 2 }) // part defaults to `any` for an object
@@ -258,21 +263,22 @@ The default order of enumeration is `asc`. For overloads that use range bounds, 
 
 ```js
 let { start, end } = index.findRange(comparator)
-let rator = index.enumerate(start, end, order)
+let seq = index.enumerate(start, end, order)
 // vs
-let rator = index.enumerate(comparator, order)
+let seq = index.enumerate(comparator, order)
 ```
 
-If the index is modified during enumeration, it generally shouldn't continue, or it may throw an error or produce invalid results. However, in-place replacement of the currently enumerated item is completely safe:
+If the index is modified during enumeration, it generally shouldn't continue, or it may throw an error or produce invalid results. However, in-place replacement of the last yielded item is completely safe:
 
 ```js
+// should be used with care
 depPk.enumerate().forEach(({ depPk }) => 
     depPk.insert({ depPk, name: 'department #' + depPk }))
 ```
 
 ## Sequence
 
-`Sequence` is returned when enumerating an index, it has methods to build linq-like queries for some common operations, like joins (inner and outer) and sorts, but using its functionality is strictly optional. In the end `Sequence` is just an iterable so any similar library can be used to query the data. The sequences returned by the  build-in methods behave like one would expect typical linq-like sequences to behave. They are lazy, streaming and try not to buffer data when possible. There are two kinds of methods of this class, some methods create a new sequence from the current, and others execute (or consume) it.
+An instance of this class is returned when enumerating an index, it has methods to build linq-like queries for some common operations, like joins (inner and outer) and sorts, but using its functionality is strictly optional. In the end a sequence is just an iterable so any similar library can be used to work with the data. The sequences returned by the  build-in methods behave like one would expect typical linq-like sequences to behave. They are lazy, streaming and try not to buffer data when possible. There are two kinds of methods of this class, some methods create a new sequence from the current, and others execute (or consume) it.
 
 ### nextValue
 
@@ -280,9 +286,10 @@ depPk.enumerate().forEach(({ depPk }) =>
 nextValue(): T | undefined
 ```
 
-This method returns the next value if it is available, or `undefined` otherwise. Used internally by the `Sequence` instances.
+This method returns the next value if it is available, or `undefined` otherwise. It is essentially the same as `next().value`. Used internally by chained `sequence` instances. 
 
 ### consumers
+
 ```ts
 toArray(): T[]
 forEach(callback: (value: T, i: number) => void): void
@@ -290,7 +297,7 @@ reduce<U>(operation: (accum: U, value: T, i: number) => U, initial: U): U
 reduce(operation: (accum: T, value: T, i: number) => T): T
 ```
 
-These three methods consume the underlying sequence and produce some sort of a result. The `reduce` method of the standard array class throws an error when the array is empty and no `initialValue` is provided. The iterator method returns `undefined` instead.
+These three methods consume the underlying sequence and produce some sort of a result. The `reduce` method of the standard array class throws an error when the array is empty and no `initialValue` is provided. The library method returns `undefined` instead.
 
 ### map/filter/concat
 
@@ -308,7 +315,7 @@ These should be familiar from their array counterparts.
 flatten(): Sequence<T extends Iterable<infer U> ? U : T>
 ```
 
-Flattens the sequence one level deep. Is used for joins. Both `concat` and `flatten` treat strings as *not* iterables.
+Flattens the sequence one level deep. Is used for joins. Both `concat` and `flatten` treat strings as *non*-iterables.
 
 ### skip/take
 
@@ -346,11 +353,11 @@ group(comparator: (a: T, b: T) => number): Sequence<Sequence<T>>
 The `segment` method segments the underlying sequence into subsequences by the provided comparator, so that for any two items in a subsequence the comparator returns zero. `segment` is a "lightweight" version of `group` that should be used when the sequence is already sorted according to the same comparator. `group` is literally just a shortcut for `sort(comparator).segment(comparator)`. If a subsequence is consumed before the next one is requested, then no buffering occurs. If only the first or the last item is needed `reduce` can be used to efficiently consume subsequences:
 
 ```js
-  // both consume the entire sequence and...
+  // both consume the entire subsequence and...
   .reduce((a, v) => a)  // returns the first item
   .reduce((a, v) => v)  // returns the last item
   // the method is safe to use without initialValue 
-  // as the subsequences are guaranteed to be non-empty
+  // as subsequences are guaranteed to be non-empty
 ```
 
 ### into
@@ -381,7 +388,7 @@ Sequence.from([[1, 2], 3]).flatten().toArray() // [1, 2, 3]
 
 ## TransactionBase 
 
-TransactionBase is small helper class. Since modifications are done not on tables as wholes, but on individual indexes, any operation must be a transaction. It must successfully perform all the actions or none at all. This class is an implemention of optimistic transaction. The fundamental assumption of this class is that the rows are immutable (at least with respect to the indexes they are added to), so that any updates are replacements. This might not be the most efficient way of doing updates but it makes a whole lot of things easier to reason about.
+Since modifications are done not on tables as wholes, but on individual indexes, any operation, unless it is performed on a single table that has only one index, involves making multiple modifications. And to maintain database consistency these modifications have to be performed atomically. This is where this small helper class steps in. 
 
 ### operations
 
@@ -393,7 +400,7 @@ delete<T extends U, U>(index: IntrusiveIndex<T, U>, key: U): T | null
 deleteAt<T>(index: IntrusiveIndex<T, any>, offset: number): T | null
 ```
 
-These are the wrappers of the corresponding `IntrusiveIndex` methods that log what items where added/removed from what indexes, so if a rollback is requested, the journal is used to revert all (or some in case of nested transactions) the changes.
+These are the wrappers of the corresponding `IntrusiveIndex` methods that log what rows where added/removed from what indexes, so if a rollback is requested, the journal is used to revert all (or some in case of nested transactions) the changes. For this to work the rows have to be *immutable* (at least with respect to the indexes they are added to), so updating a row means replacing it (an `insert` optionally followed by a `delete`). This might not be the most efficient way of doing updates but making rows immutable makes a whole lot of things easier to reason about.
 
 ### rollback
 
@@ -403,7 +410,7 @@ release(): void
 rollback(): boolean
 ```
 
-Savepoint and release can be used to create subtransactions, which will in case of an error, rollback to the nearest unreleased savepoint:
+Savepoint and release can be used to create nested transactions, which will, in case of an error, rollback to the nearest unreleased savepoint:
 
 ```js
 function tryThis(tr) {
@@ -417,7 +424,7 @@ function tryThis(tr) {
 }
 ```
 
-If the rollback method can't complete it returns false. In this case the database should be considered to be in an invalid state and the app should simply shutdown.
+If the `rollback` method can't complete it returns false. In this case the database should be considered to be in an invalid state and the app should simply shutdown.
 
 ### journal
 

@@ -48,10 +48,10 @@ export interface IntrusiveIndex<T extends U, U = T> {
   get(key: U): T | undefined
   get(comparator: (a: U) => number): T | undefined
   getAt(offset: number): T | undefined
-  findRange<O extends RangePart = 'full'>(comparator: (a: U) => number, 
-    part?: O, start?: number, end?: number): FullRange<T, O>
-  findRange<O extends RangePart = 'any'>(key: U, 
-    part?: O, start?: number, end?: number): FullRange<T, O>
+  findRange<P extends RangePart = 'full'>(comparator: (a: U) => number, 
+    part?: P, start?: number, end?: number): FullRange<T, P>
+  findRange<P extends RangePart = 'any'>(key: U, 
+    part?: P, start?: number, end?: number): FullRange<T, P>
   enumerate(start: number, end: number, order?: Order): Sequence<T>
   enumerate(start: number, order?: Order): Sequence<T>
   enumerate(order?: Order): Sequence<T>

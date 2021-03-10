@@ -1,7 +1,7 @@
 {
   "name": "intrusive-index",
   "version": "0.1.0",
-  "description": "",
+  "description": "avl tree based intrusive index",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -12,7 +12,12 @@
     "intrusive", "index", "tree", 
     "in-memory", "sql", "database"
   ],
-  "author": "kfdf",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kfdf/intrusive-index.git"
+  },
+  "homepage": "https://github.com/kfdf/intrusive-index",
+  "author": "kfdf <khanfusion@mail.ru>",
   "license": "MIT",
   "files": [
     "index.d.ts"

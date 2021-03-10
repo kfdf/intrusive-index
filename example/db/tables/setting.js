@@ -15,9 +15,9 @@ export function Row({
 }
 
 /*
-because this table column count equals to the primary 
+Because this table column count equals to the primary 
 key column count, there is no way to discern between 
-creation and deletion records when loading the data, 
+the creation and deletion records when loading data, 
 so keyLength is set to three to make deletion records 
 longer. Slightly hackish way but it works */
 export const keyLength = 3
