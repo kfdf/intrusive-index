@@ -72,7 +72,7 @@ depPk
 
 console.log('List of employees who report to employee #4')
 function prepend(value) {
-  return rator => Sequence.from([value, rator]).flatten()
+  return seq => Sequence.from([value, seq]).flatten()
 }
 function getSubordinates(a) {
   return empManagerIx
@@ -93,7 +93,7 @@ getSubordinates({ emp: empPk.get({ empId: 4 }) })
 
 ## Example Project
 
-The API is small, low level and somewhat footguny, so the `example` folder in the repository contains an express webapp. Initally I thought to implement the local libray example from MDN, but then I just happened on some data that I believe was scraped from Touhou Fandom Wiki somewhere around 2013 and put into an SQL Server. Perhaps not the most suitable foundation for a CRUD app, but I *really* wanted to use the data... It is quite small, just a few hundred rows accross all the tables, but the example is written as if there were hundreds of thousands, or even millions of rows (the reasonable maximum for this sort of storage). So the features are:
+The API is small, low level and somewhat footguny, so the `example` folder in the repository contains an express webapp. Initally I thought to implement the local library example from MDN, but then I just happened on some data that I believe was scraped from Touhou Fandom Wiki somewhere around 2013 and put into an SQL Server. Perhaps not the most suitable foundation for a CRUD app, but I *really* wanted to use the data... It is quite small, just a few hundred rows across all the tables, but the example is written as if there were hundreds of thousands, or even millions of rows (the reasonable maximum for this sort of storage). So the features are:
 - Pagination everywhere
 - No client-side scripting or even html validation, for illustrative purposes
 - No sessions
@@ -109,7 +109,7 @@ The library exposes three classes and two methods. The primary class is `Intrusi
 
 ## IntrusiveIndex
 
-The `IntrusiveIndex` constructor is not exported directly, but variants of it can be created by `constructorFactory`, also six prefabricated constructors are provided for convenience. The index uses the AVL tree that additionally tracks items offsets. All methods are non batching and have logarithmic time complexity. Declarations below make use of two generic parameters, `TValue` and `TKey`, which, for example, in case of the `empManagerIx` index are: `{ empId: number, depId: number, name: string, managerId: number }` and `{ managerId: number, empId: number }`. Actually, the type of the `managerId` field should be `number | null` but javascript coercion works well in this case converting nulls to zeroes and typescript can be overly pedantic.
+The `IntrusiveIndex` constructor is not exported directly, but variants of it can be created by `constructorFactory`, also six prefabricated constructors are provided for convenience. The index uses the AVL tree that additionally tracks items offsets. All methods are non-batching and have logarithmic time complexity. Declarations below make use of two generic parameters, `TValue` and `TKey`, which, for example, in case of the `empManagerIx` index are: `{ empId: number, depId: number, name: string, managerId: number }` and `{ managerId: number, empId: number }`. Actually, the type of the `managerId` field should be `number | null` but javascript coercion works well in this case converting nulls to zeroes and typescript can be overly pedantic.
 
 ### keys
 
@@ -142,7 +142,7 @@ constructor(comparator: (a: TKey, b: TKey) => number)
 comp: (a: TKey, b: TKey) => number
 ```
 
-A comparator that is provided to define item ordering is also availabe as the `comp` property of the index. It can be used create unary comparators that define ranges in child tables, like so:
+A comparator that is provided to define item ordering is also available as the `comp` property of the index. It can be used create unary comparators that define ranges in child tables, like so:
 
 ```js
 let childRows = childParentFk
@@ -155,7 +155,7 @@ Conversely, to `get` a parent row a child row can be used as the key:
 let parentRow = parentPk.get(childRow)
 ```
 
-Such "natural" joins work if both tables are joined on the identically named columns, so primary keys should be prefixed with table names. Otherwise, these two examples would have been:
+Such "natural" joins work if primary keys are be prefixed with table names, so that both tables can be joined on the identically named columns. Otherwise, these two examples would have been:
 
 ```js
 let childRows = childParentFk
@@ -189,7 +189,7 @@ delete(comparator: (a: TKey) => number): TValue | null
 deleteAt(offset: number): TValue | null
 ```
 
-These two methods remove an item from the index and return it. The second overload of the first one deletes any item from the specifiend range. The range is defined by a unary comparator that returns zero for the matched items, negative numbers for the preceding, and positive numbers for the following items. It usually is created from a comparator by filling in *the second* of the two values. To delete all the employees from the first department one could do:
+These two methods remove an item from the index and return it. The second overload of the first one deletes any item from the specified range. The range is defined by a unary comparator that returns zero for the matched items, negative numbers for the preceding, and positive numbers for the following items. It usually is created from a comparator by filling in *the second* of the two values. To delete all the employees from the first department one could do:
 
 ```js
 let departmentKey = { depId: 1 }
@@ -242,7 +242,7 @@ For any range `r` retrieved from `index` the following is true:
  index.getAt(r.end) === r.atEnd // when available
 ```
 
-`findRange` can be used to delete all items from a range:
+`findRange` can be used to delete all the items from a range:
 
 ```js
 let { start, end } = index.findRange(comparator)
@@ -259,7 +259,7 @@ enumerate(order?: Order): Sequence<TValue>
 enumerate(comparator: (a: TKey) => number, order?: Order): Sequence<TValue>
 ```
 
-The default order of enumeration is `asc`. For overloads that use range bounds, the interval for enumeration ranges from `start` *including* to `end` *excluding*. So, for a given comparator and order these two approaches are functionaly the same:
+The default order of enumeration is `asc`. For overloads that use range bounds, the interval for enumeration ranges from `start` *including* to `end` *excluding*. So, for a given comparator and order these two approaches are functionally the same:
 
 ```js
 let { start, end } = index.findRange(comparator)
@@ -363,7 +363,7 @@ The `segment` method segments the underlying sequence into subsequences by the p
 ### into
 
 ```ts
-into<U>(callback: (rator: Sequence<T>) => U) : U
+into<U>(callback: (seq: Sequence<T>) => U) : U
 ```
 
 Calls the provided fallback with the current sequence as the first argument and returns the result. `IntrusiveIndex` has the same method that does the same thing. Can be used to provide custom logic or to switch over to another query library altogether.
@@ -437,7 +437,7 @@ journal: {
 }
 ```
 
-The `journal` property of a transaction holds several arrays with the transaction data. If the transaction is "commited" the journal can be used to verify the database consistency (to some extent, at least) and to persist changes.
+The `journal` property of a transaction holds several arrays with the transaction data. If the transaction is "committed" the journal can be used to verify the database consistency (to some extent, at least) and to persist changes.
 
 ```js
 let tr = new Transaction() // derived from TransactionBase
@@ -464,4 +464,4 @@ The default export of the library. Creates variants of `IndexContructor`. The re
 
 ## createFactory
 
-This method should have been named `constructorFactoryFactory`. IIA, IIB ... IIF or any other manually created index constructors are created from the same source code, so working with different row types causes function calls to become megamorphic. It may be perfectly acceptable as the performance is typically cache dominated, but it can be avoided if really nessesary. This method probably shouldn't be abused...
+This method should have been named `constructorFactoryFactory`. IIA, IIB ... IIF or any other manually created index constructors are created from the same source code, so working with different row types causes function calls to become megamorphic. It may be perfectly acceptable as the performance is typically cache dominated, but it can be avoided if really necessary. This method probably shouldn't be abused...

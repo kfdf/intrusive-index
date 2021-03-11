@@ -94,7 +94,7 @@ function getEmplsFlat(manager) {
     .enumerate(e => e.manager - manager.empId)
     .map(getEmplsFlat)
     .flatten()
-    .into(rator => Sequence.from([manager, rator]).flatten())
+    .into(seq => Sequence.from([manager, seq]).flatten())
 }
 getEmplsFlat(empPk.getAt(0))
   .map(emp => emp.name)

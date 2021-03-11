@@ -1,6 +1,6 @@
 {
   "name": "intrusive-index",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "avl tree based intrusive index",
   "main": "index.js",
   "type": "module",

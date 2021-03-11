@@ -3,7 +3,7 @@ export class Sequence<T> {
   next(): IteratorResult<T, undefined>
   [Symbol.iterator](): Sequence<T>
   static from<T>(iterable: Iterable<T>): Sequence<T>  
-  into<U>(callback: (rator: Sequence<T>) => U) : U
+  into<U>(callback: (sequence: Sequence<T>) => U) : U
   toArray(): T[]
   forEach(callback: (value: T, i: number) => void): void
   reduce<U>(operation: (accum: U, value: T, i: number) => U, initial: U): U
@@ -13,7 +13,7 @@ export class Sequence<T> {
   flatten(): Sequence<T extends Iterable<infer U> ? U : T>
   skip(count: number): Sequence<T>
   take(count: number): Sequence<T>
-  fallback<U>(value: U) : Sequence<T> | Sequence<U>
+  fallback<U>(value: U) : Sequence<T | U>
   concat<U>(value: U): Sequence<U extends Iterable<infer V> ? T | V : T | U>
   sort(comparator: (a: T, b: T) => number): Sequence<T>
   reverse(): Sequence<T>
@@ -29,10 +29,10 @@ declare interface Range<T> {
   rootOffset: number
   rootBase: number  
 }
-export type FullRange<T, O> = 
-  O extends 'full' ? Range<T> & { preStart: T | undefined; atEnd: T | undefined } :
-  O extends 'start' ? Range<T> & { preStart: T | undefined } :
-  O extends 'end' ? Range<T> & { atEnd: T | undefined } : Range<T>
+export type FullRange<T, P> = 
+  P extends 'full' ? Range<T> & { preStart: T | undefined; atEnd: T | undefined } :
+  P extends 'start' ? Range<T> & { preStart: T | undefined } :
+  P extends 'end' ? Range<T> & { atEnd: T | undefined } : Range<T>
 
 declare type Order = 'asc' | 'desc'
 declare type RangePart = 'any' | 'start' | 'end' | 'full'
@@ -56,7 +56,7 @@ export interface IntrusiveIndex<T extends U, U = T> {
   enumerate(start: number, order?: Order): Sequence<T>
   enumerate(order?: Order): Sequence<T>
   enumerate(comparator: (a: U) => number, order?: Order): Sequence<T>
-  into<K>(callback: (ii: IntrusiveIndex<T, U>) => K) : K
+  into<V>(callback: (intrusiveIndex: IntrusiveIndex<T, U>) => V) : V
   setRoot(root: T): void
 }
 export interface IndexConstructor {          
